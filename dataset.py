@@ -1,3 +1,4 @@
+import torch
 import numpy as np
 
 from torch.utils.data import Dataset
@@ -25,7 +26,7 @@ class HurrDataset(Dataset):
                     # targets shifted by one
                     y[:-1], y[-1] = x[1:], hurr[n+self.window_len_output]
                 except IndexError:
-                    pass
+                    continue
 
                 x_buffer.append(x)
                 y_buffer.append(y)
@@ -33,6 +34,9 @@ class HurrDataset(Dataset):
         # target and data are in shape of (N, window_len, D)
         x_buffer = np.stack(x_buffer, axis=0)
         y_buffer = np.stack(y_buffer, axis=0)
+
+        x_buffer = torch.from_numpy(x_buffer)
+        y_buffer = torch.from_numpy(y_buffer)
 
         return x_buffer, y_buffer
 
