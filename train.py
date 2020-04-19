@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from models.lstm import LSTM
 
 
-def train(train_ds, val_ds, exp_count, overwrite_flag, **params):
+def train(batch_generator, exp_count, overwrite_flag, **params):
 
     if overwrite_flag:
         tag = exp_count
@@ -21,12 +21,12 @@ def train(train_ds, val_ds, exp_count, overwrite_flag, **params):
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
-    input_dim = train_ds.input_dim
-    output_dim = train_ds.output_dim
+    input_dim = len(batch_generator.input_dim)
+    output_dim = len(batch_generator.output_dim)
 
     model = LSTM(input_dim, output_dim, **params)
 
-    train_loss, val_loss, evaluation_val_loss = model.fit(train_ds, val_ds)
+    train_loss, val_loss, evaluation_val_loss = model.fit(batch_generator)
 
     # plot and save the loss curve
     plot_loss_curve(train_loss, val_loss, save_dir)
@@ -43,8 +43,8 @@ def train(train_ds, val_ds, exp_count, overwrite_flag, **params):
             pkl.dump(obj, file)
 
 
-def predict(model, test_ds):
-    test_loss = model.step_loop(test_ds, model.eval_step)
+def predict(model, batch_generator):
+    test_loss = model.step_loop(batch_generator, model.eval_step, 'test')
     print("Test Rounded MAE loss: {:.3f}".format(test_loss))
 
 

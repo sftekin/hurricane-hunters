@@ -3,7 +3,7 @@ from random import shuffle
 
 
 model_params_pool = {
-    "rnn": {
+    "lstm": {
         "batch_size": [4, 8, 16, 32, 64],
         "shuffle": [True],
         "learning_rate": [1e-4, 3e-4, 1e-3, 3e-3],
@@ -14,7 +14,8 @@ model_params_pool = {
         "early_stop_tolerance": [5],
         "final_act_layer": ["relu"],
         "window_len_input": [10],
-        "window_len_output": [1]  # must be 1
+        "window_len_output": [1],
+        "stride": [1]
     },
     "trajgru": {}
 }
@@ -31,14 +32,16 @@ class Config:
         self.conf_list = self.create_params_list(dict(**self.model_params))
         self.num_confs = len(self.conf_list)
 
-        self.data_params = {
-            "temporal_resolution": 6,
-            "spatial_resolution": 1,
-            "start_date": "01-01-2000",
-            "end_date": "01-01-2007"
+        self.experiment_params = {
+            "num_works": 1,
+            "val_ratio": 0.2,
+            "test_ratio": 0.2,
+            "input_dim": list(range(7)),
+            "output_dim": list(range(2)),
         }
 
-        self.experiment_params = {
+        self.data_params = {
+            "season_range": (1979, 2020)
         }
 
     def next(self):

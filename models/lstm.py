@@ -3,6 +3,7 @@ from copy import deepcopy
 
 import torch
 import torch.nn as nn
+from torch.autograd import Variable
 
 
 class LSTM(nn.Module):
@@ -63,7 +64,7 @@ class LSTM(nn.Module):
     def __init_hidden_states(self, batch_size):
         h_list = []
         for cell in self.cell_list:
-            h_list.append(torch.zeros(batch_size, cell.hidden_size))
+            h_list.append(Variable(torch.zeros(batch_size, cell.hidden_size)))
         return h_list
 
     def forward(self, input_tensor):
@@ -85,7 +86,7 @@ class LSTM(nn.Module):
 
         return x
 
-    def fit(self, train_ds, val_ds):
+    def fit(self, batch_generator):
         print('Training starts...')
         train_loss = []
         val_loss = []
@@ -99,8 +100,8 @@ class LSTM(nn.Module):
         for epoch in range(self.num_epochs):
             # train and validation loop
             start_time = time.time()
-            running_train_loss = self.step_loop(train_ds, self.train_step)
-            running_val_loss = self.step_loop(val_ds, self.eval_step)
+            running_train_loss = self.step_loop(batch_generator, self.train_step, 'train')
+            running_val_loss = self.step_loop(batch_generator, self.eval_step, 'validation')
             epoch_time = time.time() - start_time
 
             message_str = "Epoch: {}, Train_loss: {:.3f}, Validation_loss: {:.3f}, Took {:.3f} seconds."
@@ -119,7 +120,7 @@ class LSTM(nn.Module):
 
             if tolerance > self.early_stop_tolerance or epoch == self.num_epochs - 1:
                 self.load_state_dict(best_dict)
-                evaluation_val_loss = self.step_loop(val_ds, self.eval_step)
+                evaluation_val_loss = self.step_loop(batch_generator, self.eval_step, 'validation')
                 message_str = "Early exiting from epoch: {}, Rounded MAE for validation set: {:.3f}."
                 print(message_str.format(best_epoch, evaluation_val_loss))
                 break
@@ -127,12 +128,14 @@ class LSTM(nn.Module):
         print('Training finished')
         return train_loss, val_loss, evaluation_val_loss
 
-    def step_loop(self, dataset, step_fun):
+    def step_loop(self, batch_generator, step_fun, dataset_type):
         count = 0
         running_loss = 0.0
 
-        for count, (input_tensor, output_tensor) in enumerate(dataset):
-            loss = step_fun(input_tensor, output_tensor, self.loss_fun)
+        for count, (input_data, output_data) in batch_generator.generate(dataset_type):
+            input_data = torch.Tensor(input_data)
+            output_data = torch.Tensor(output_data)
+            loss = step_fun(input_data, output_data, self.loss_fun)
             running_loss += loss.numpy()
 
         running_loss /= (count + 1)

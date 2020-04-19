@@ -3,12 +3,12 @@ import pandas as pd
 import numpy as np
 
 
-class CreateData:
+class DataCreator:
     def __init__(self, hurricane_path, **params):
         self.hurricane_path = hurricane_path
         self.data_dir = os.path.dirname(hurricane_path)
         self.start_year, self.end_year = params['season_range']
-        self.hurr_list = self.__create_hur_data()
+        self.hurricane_list = self.__create_hur_data()
 
     def __create_hur_data(self):
         print('Loading Data...')
@@ -35,7 +35,7 @@ class CreateData:
         if not os.path.isdir(hurricane_folder):
             os.makedirs(hurricane_folder)
 
-        hurr_list = []
+        hurricane_list = []
         sid_list = pd.unique(data['SID'])
         for sid in sid_list:
             hur = data[data['SID'] == sid]
@@ -43,10 +43,10 @@ class CreateData:
             save_path = os.path.join(hurricane_folder,
                                      '{}_{}.npy'.format(sid, hur_name))
             arr = hur.loc[:, 'LAT':].values
-            hurr_list.append(arr)
+            hurricane_list.append(arr)
             np.save(save_path, arr)
 
-        return hurr_list
+        return hurricane_list
 
 
 if __name__ == '__main__':
@@ -54,4 +54,4 @@ if __name__ == '__main__':
     parameters = {
         'season_range': (1979, 2020)
     }
-    create_data = CreateData(hurr_path, **parameters)
+    create_data = DataCreator(hurr_path, **parameters)

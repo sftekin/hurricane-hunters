@@ -3,7 +3,8 @@ import os
 import pickle as pkl
 
 from config import Config
-from dataset import Dataset
+from data_creator import DataCreator
+from batch_generator import BatchGenerator
 from train import train, predict
 
 
@@ -36,36 +37,39 @@ def select_best_model(results_dir):
 def main(overwrite_flag):
     model_name = 'rnn'
     data_folder = 'data'
+    hurricane_path = os.path.join(data_folder, 'ibtracs.NA.list.v04r00.csv')
     results_folder = 'results'
 
     config_obj = Config(model_name)
+    hurricane_list = DataCreator(hurricane_path, **config_obj.data_params)
 
     print("Starting experiments")
     for exp_count, conf in enumerate(config_obj.conf_list):
         print('\nExperiment {}'.format(exp_count))
         print('-*-' * 10)
 
-        # TODO (sft) Kanka bu argümanları abstract yazdım buraya lazım olcak muhtemelen diye
-        dataset = Dataset(data_dir=data_folder,
-                          batch_size=conf["batch_size"],
-                          shuffle=conf['shuffle'],
-                          window_len_input=conf["window_len_input"],
-                          window_len_output=conf["window_len_output"],
-                          **config_obj.data_params)
+        batch_generator = BatchGenerator(hurricane_list=hurricane_list,
+                                         batch_size=conf["batch_size"],
+                                         shuffle=conf['shuffle'],
+                                         window_len_input=conf["window_len_input"],
+                                         window_len_output=conf["window_len_output"],
+                                         stride=conf["stride"],
+                                         **config_obj.experiment_params)
 
-        train(dataset.train_ds, dataset.val_ds, exp_count, overwrite_flag, **conf)
+        train(batch_generator, exp_count, overwrite_flag, **conf)
 
     best_model, best_conf = select_best_model(results_folder)
 
-    dataset = Dataset(data_dir=data_folder,
-                      batch_size=best_conf["batch_size"],
-                      shuffle=False,
-                      window_len_input=best_conf["window_len_input"],
-                      window_len_output=best_conf["window_len_output"],
-                      **config_obj.data_params)
+    batch_generator = BatchGenerator(hurricane_list=hurricane_list,
+                                     batch_size=best_conf["batch_size"],
+                                     shuffle=best_conf['shuffle'],
+                                     window_len_input=best_conf["window_len_input"],
+                                     window_len_output=best_conf["window_len_output"],
+                                     stride=best_conf["stride"],
+                                     **config_obj.experiment_params)
 
     print("Testing with best model...")
-    predict(best_model, dataset.test_ds)
+    predict(best_model, batch_generator)
 
 
 if __name__ == '__main__':

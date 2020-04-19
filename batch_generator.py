@@ -3,10 +3,12 @@ from torch.utils.data import DataLoader
 
 
 class BatchGenerator:
-    def __init__(self, hurr_list, **params):
-        self.hurr_list = hurr_list
+    def __init__(self, hurricane_list, **params):
+        self.hurricane_list = hurricane_list
         self.params = params
 
+        self.input_dim = params['input_dim']
+        self.output_dim = params['output_dim']
         self.batch_size = params['batch_size']
         self.test_ratio = params['test_ratio']
         self.val_ratio = params['val_ratio']
@@ -17,15 +19,15 @@ class BatchGenerator:
         self.dataset_dict, self.data_loader_dict = self._create_sets()
 
     def _split_data(self):
-        data_len = len(self.hurr_list)
+        data_len = len(self.hurricane_list)
 
         test_count = int(data_len * self.test_ratio)
         val_count = int(data_len * self.val_ratio)
 
         data_dict = {
-            'test': self.hurr_list[:test_count],
-            'validation': self.hurr_list[test_count:test_count+val_count],
-            'train': self.hurr_list[test_count+val_count:]
+            'test': self.hurricane_list[:test_count],
+            'validation': self.hurricane_list[test_count:test_count+val_count],
+            'train': self.hurricane_list[test_count+val_count:]
         }
 
         return data_dict
@@ -33,7 +35,7 @@ class BatchGenerator:
     def _create_sets(self):
         hurr_dataset = {}
         for i in ['test', 'validation', 'train']:
-            hurr_dataset[i] = HurrDataset(hurr_list=self.data_dict[i],
+            hurr_dataset[i] = HurrDataset(hurricane_list=self.data_dict[i],
                                           **self.params)
 
         hurr_loader = {}
