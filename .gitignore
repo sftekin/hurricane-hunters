@@ -6,3 +6,6 @@ data/*
 
 results/*
 !results/.gitkeep
+
+figures/*
+!figures/.gitkeep
