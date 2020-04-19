@@ -24,9 +24,12 @@ def train(batch_generator, exp_count, overwrite_flag, **params):
     input_dim = len(batch_generator.input_dim)
     output_dim = len(batch_generator.output_dim)
 
-    model = LSTM(input_dim, output_dim, **params)
-
-    train_loss, val_loss, evaluation_val_loss = model.fit(batch_generator)
+    try:
+        model = LSTM(input_dim, output_dim, **params)
+        train_loss, val_loss, evaluation_val_loss = model.fit(batch_generator)
+    except Exception as error:
+        os.rmdir(save_dir)
+        raise error
 
     # plot and save the loss curve
     plot_loss_curve(train_loss, val_loss, save_dir)

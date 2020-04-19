@@ -33,19 +33,19 @@ class BatchGenerator:
         return data_dict
 
     def _create_sets(self):
-        hurr_dataset = {}
+        hurricane_dataset = {}
         for i in ['test', 'validation', 'train']:
-            hurr_dataset[i] = HurrDataset(hurricane_list=self.data_dict[i],
+            hurricane_dataset[i] = HurrDataset(hurricane_list=self.data_dict[i],
                                           **self.params)
 
-        hurr_loader = {}
+        hurricane_loader = {}
         for i in ['test', 'validation', 'train']:
-            hurr_loader[i] = DataLoader(hurr_dataset[i],
+            hurricane_loader[i] = DataLoader(hurricane_dataset[i],
                                         batch_size=self.batch_size,
                                         shuffle=self.shuffle,
                                         drop_last=False)
 
-        return hurr_dataset, hurr_loader
+        return hurricane_dataset, hurricane_loader
 
     def generate(self, dataset_type):
         selected_loader = self.data_loader_dict[dataset_type]
@@ -53,9 +53,9 @@ class BatchGenerator:
 
 
 if __name__ == '__main__':
-    from create_data import CreateData
+    from data_creator import DataCreator
 
-    batch_gen_params = {
+    params = {
         'batch_size': 4,
         'test_ratio': 0.1,
         'val_ratio': 0.1,
@@ -65,12 +65,9 @@ if __name__ == '__main__':
         'output_dim': [0, 1]
     }
 
-    data = CreateData(hurricane_path='data/ibtracs.NA.list.v04r00.csv',
-                      season_range=(1994, 2020))
+    data_creator = DataCreator(hurricane_path='data/ibtracs.NA.list.v04r00.csv', season_range=(1994, 2020))
+    batch_generator = BatchGenerator(hurricane_list=data_creator.hurricane_list, **params)
 
-    batch_creator = BatchGenerator(hurr_list=data.hurr_list,
-                                   **batch_gen_params)
-
-    for x, y in batch_creator.generate('train'):
+    for x, y in batch_generator.generate('train'):
         print(x.shape, y.shape)
 

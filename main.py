@@ -35,13 +35,13 @@ def select_best_model(results_dir):
 
 
 def main(overwrite_flag):
-    model_name = 'rnn'
+    model_name = 'lstm'
     data_folder = 'data'
     hurricane_path = os.path.join(data_folder, 'ibtracs.NA.list.v04r00.csv')
     results_folder = 'results'
 
     config_obj = Config(model_name)
-    hurricane_list = DataCreator(hurricane_path, **config_obj.data_params)
+    hurricane_list = DataCreator(hurricane_path, **config_obj.data_params).hurricane_list
 
     print("Starting experiments")
     for exp_count, conf in enumerate(config_obj.conf_list):

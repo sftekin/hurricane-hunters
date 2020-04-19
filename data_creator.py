@@ -15,9 +15,9 @@ class DataCreator:
         if os.path.isdir(hurricane_folder):
             print('Loading from saved folder')
             hurricane_list = []
-            for hurr_file in os.listdir(hurricane_folder):
-                hurr_file_path = os.path.join(hurricane_folder, hurr_file)
-                hurricane_list.append(np.load(hurr_file_path, allow_pickle=True))
+            for hurricane_file in os.listdir(hurricane_folder):
+                hurricane_file_path = os.path.join(hurricane_folder, hurricane_file)
+                hurricane_list.append(np.load(hurricane_file_path, allow_pickle=True))
         else:
             # save each hurricane as numpy array
             os.makedirs(hurricane_folder)
@@ -58,8 +58,8 @@ class DataCreator:
 
 
 if __name__ == '__main__':
-    hurr_path = 'data/ibtracs.NA.list.v04r00.csv'
+    hurricane_path = 'data/ibtracs.NA.list.v04r00.csv'
     parameters = {
         'season_range': (1994, 2020)
     }
-    create_data = DataCreator(hurr_path, **parameters)
+    data_creator = DataCreator(hurricane_path, **parameters)

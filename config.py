@@ -4,18 +4,23 @@ from random import shuffle
 
 model_params_pool = {
     "lstm": {
-        "batch_size": [4, 8, 16, 32, 64],
+        "batch_size": [32],
         "shuffle": [True],
-        "learning_rate": [1e-4, 3e-4, 1e-3, 3e-3],
-        "num_epochs": [300],
+        "learning_rate": [1e-2],
+        "num_epochs": [5],
+        "loss_type": ["l2"],
         "optimizer_type": ["adam"],
+        "grad_clip": [1],
         "l2_reg": [1e-4, 1e-3],
         "dropout_rate": [0],
         "early_stop_tolerance": [5],
-        "final_act_layer": ["relu"],
+        "final_act_type": ["leaky_relu"],
+        "relu_alpha": [0.01],
         "window_len_input": [10],
         "window_len_output": [1],
-        "stride": [1]
+        "stride": [1],
+        "hidden_dim_list": [[8, 8]],
+        "norm_method": ["none"],
     },
     "trajgru": {}
 }
@@ -41,7 +46,7 @@ class Config:
         }
 
         self.data_params = {
-            "season_range": (1979, 2020)
+            "season_range": (1994, 2020)
         }
 
     def next(self):

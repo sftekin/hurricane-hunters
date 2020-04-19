@@ -10,7 +10,7 @@ class HurrDataset(Dataset):
         # TODO: I've assumed input and output window_len are equal
         self.window_len_input = params['window_len_input']
         self.window_len_output = params['window_len_output']
-        self.stride = params['input_dim']
+        self.stride = params['stride']
         self.input_dim = params['input_dim']
         self.output_dim = params['output_dim']
         self.data, self.label = self._create_buffer()
@@ -18,13 +18,13 @@ class HurrDataset(Dataset):
     def _create_buffer(self):
         x_buffer = []
         y_buffer = []
-        for hurr in self.hurricane_list:
-            for n in range(0, hurr.shape[0], self.stride):
-                x = hurr[n:n+self.window_len, :]
+        for hurricane in self.hurricane_list:
+            for n in range(0, hurricane.shape[0] - (self.window_len_input + self.window_len_output), self.stride):
+                x = hurricane[n:n+self.window_len_input, :]
                 y = np.zeros_like(x)
                 try:
                     # targets shifted by one
-                    y[:-1], y[-1] = x[1:], hurr[n+self.window_len_output]
+                    y[:-1], y[-1] = x[1:], hurricane[n+self.window_len_output]
                 except IndexError:
                     continue
 
@@ -35,8 +35,8 @@ class HurrDataset(Dataset):
         x_buffer = np.stack(x_buffer, axis=0)
         y_buffer = np.stack(y_buffer, axis=0)
 
-        x_buffer = torch.from_numpy(x_buffer)
-        y_buffer = torch.from_numpy(y_buffer)
+        x_buffer = torch.Tensor(x_buffer)
+        y_buffer = torch.Tensor(y_buffer)
 
         return x_buffer, y_buffer
 
@@ -44,4 +44,4 @@ class HurrDataset(Dataset):
         return self.data.shape[0]
 
     def __getitem__(self, idx):
-        return self.data[idx, :, [self.input_dim]], self.label[idx, :, [self.output_dim]]
+        return self.data[idx, :, self.input_dim], self.label[idx, :, self.output_dim]

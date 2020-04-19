@@ -5,6 +5,8 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
+from normalizer import Normalizer
+
 
 class LSTM(nn.Module):
 
@@ -13,7 +15,7 @@ class LSTM(nn.Module):
 
     loss_dispatcher = {"l2": nn.MSELoss}
 
-    activation_dispatcher = {"relu": nn.ReLU,
+    activation_dispatcher = {"leaky_relu": nn.LeakyReLU,
                              "tanh": nn.Tanh,
                              "sigmoid": nn.Sigmoid}
 
@@ -26,20 +28,30 @@ class LSTM(nn.Module):
         self.loss_type = params["loss_type"]
         self.learning_rate = params["learning_rate"]
         self.optimizer_type = params["optimizer_type"]
+        self.grad_clip = params["grad_clip"]
         self.l2_reg = params["l2_reg"]
-        self.optimizer = self.optimizer_dispatcher[self.optimizer_type](lr=self.learning_rate, weight_decay=self.l2_reg)
         self.dropout_rate = params["dropout_rate"]
 
         self.num_epochs = params["num_epochs"]
         self.early_stop_tolerance = params["early_stop_tolerance"]
 
-        self.num_layers = params["num_layers"]
         self.hidden_dim_list = params["hidden_dim_list"]
+        self.num_layers = len(self.hidden_dim_list)
         self.final_act_type = params["final_act_type"]
+        self.relu_alpha = params["relu_alpha"]
 
-        self.__create_cells()
+        self.norm_method = params["norm_method"]
+
+        self.__create_rnn_cell_list()
         self.__create_dropout_layer()
-        self.__create_dense()
+        self.__create_dense_layer()
+        self.__create_final_act_layer()
+
+        self.optimizer = self.optimizer_dispatcher[self.optimizer_type](self.parameters(), lr=self.learning_rate,
+                                                                        weight_decay=self.l2_reg)
+
+        self.input_normalizer = Normalizer(self.norm_method)
+        self.output_normalizer = Normalizer(self.norm_method)
 
     def __create_rnn_cell_list(self):
         cell_list = []
@@ -59,25 +71,40 @@ class LSTM(nn.Module):
         self.dense_layer = nn.Linear(in_features=self.hidden_dim_list[-1], out_features=self.output_dim)
 
     def __create_final_act_layer(self):
-        self.final_act_layer = self.activation_dispatcher[self.final_act_type]()
+        if self.final_act_type == "leaky_relu":
+            self.final_act_layer = self.activation_dispatcher[self.final_act_type](self.relu_alpha)
+        else:
+            self.final_act_layer = self.activation_dispatcher[self.final_act_type]
 
     def __init_hidden_states(self, batch_size):
-        h_list = []
+        self.h_list = []
+        self.c_list = []
+
         for cell in self.cell_list:
-            h_list.append(Variable(torch.zeros(batch_size, cell.hidden_size)))
-        return h_list
+            self.h_list.append(Variable(torch.zeros(batch_size, cell.hidden_size)))
+            self.c_list.append(Variable(torch.zeros(batch_size, cell.hidden_size)))
+
+    @staticmethod
+    def repackage_hidden(h):
+        """Wraps hidden states in new Tensors, to detach them from their history."""
+
+        if isinstance(h, torch.Tensor):
+            return h.detach()
+        else:
+            return tuple(LSTM.repackage_hidden(v) for v in h)
 
     def forward(self, input_tensor):
 
         batch_size = input_tensor.shape[0]
         num_steps = input_tensor.shape[1]
-        h_list = self.__init_hidden_states(batch_size)
+        self.__init_hidden_states(batch_size)
 
-        for step in num_steps:
+        for step in range(num_steps):
             x = input_tensor[:, step]
             for layer_idx, cell in enumerate(self.cell_list):
-                h = cell(x, h_list[layer_idx])
-                h_list[layer_idx] = h
+                h, c = cell(x, (self.h_list[layer_idx], self.c_list[layer_idx]))
+                self.h_list[layer_idx] = self.repackage_hidden(h)
+                self.c_list[layer_idx] = self.repackage_hidden(c)
                 x = h
 
         x = self.dropout_layer(x)
@@ -96,6 +123,9 @@ class LSTM(nn.Module):
         best_val_loss = 1e6
         evaluation_val_loss = best_val_loss
         best_dict = self.state_dict()
+
+        self.input_normalizer.fit(batch_generator.dataset_dict["train"].data)
+        self.output_normalizer.fit(batch_generator.dataset_dict["train"].data)
 
         for epoch in range(self.num_epochs):
             # train and validation loop
@@ -132,11 +162,11 @@ class LSTM(nn.Module):
         count = 0
         running_loss = 0.0
 
-        for count, (input_data, output_data) in batch_generator.generate(dataset_type):
-            input_data = torch.Tensor(input_data)
-            output_data = torch.Tensor(output_data)
-            loss = step_fun(input_data, output_data, self.loss_fun)
-            running_loss += loss.numpy()
+        for count, (input_data, output_data) in enumerate(batch_generator.generate(dataset_type)):
+            input_data = self.input_normalizer.transform(input_data)
+            output_data = self.output_normalizer.transform(output_data)
+            loss = step_fun(input_data, output_data[:, -1])  # many-to-one
+            running_loss += loss.detach().numpy()
 
         running_loss /= (count + 1)
 
@@ -147,8 +177,9 @@ class LSTM(nn.Module):
         def closure():
             self.optimizer.zero_grad()
             predictions = self.forward(input_tensor)
-            loss = self.loss_fun(output_tensor, predictions)
+            loss = self.loss_fun(predictions, output_tensor)
             loss.backward()
+            nn.utils.clip_grad_norm_(self.parameters(), self.grad_clip)
             return loss
 
         loss = self.optimizer.step(closure)
