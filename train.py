@@ -47,8 +47,8 @@ def train(batch_generator, exp_count, overwrite_flag, **params):
 
 
 def predict(model, batch_generator):
-    test_loss = model.step_loop(batch_generator, model.eval_step, 'test')
-    print("Test Rounded MAE loss: {:.3f}".format(test_loss))
+    test_loss = model.step_loop(batch_generator, model.eval_step, 'test', denormalize=True)
+    print("Test error: {:.5f}".format(test_loss))
 
 
 def plot_loss_curve(train_loss, eval_loss, save_dir):

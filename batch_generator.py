@@ -41,9 +41,9 @@ class BatchGenerator:
         hurricane_loader = {}
         for i in ['test', 'validation', 'train']:
             hurricane_loader[i] = DataLoader(hurricane_dataset[i],
-                                        batch_size=self.batch_size,
-                                        shuffle=self.shuffle,
-                                        drop_last=False)
+                                             batch_size=self.batch_size,
+                                             shuffle=self.shuffle,
+                                             drop_last=False)
 
         return hurricane_dataset, hurricane_loader
 

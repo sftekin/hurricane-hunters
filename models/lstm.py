@@ -6,6 +6,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 from normalizer import Normalizer
+from static_helpers import haversine_dist
 
 
 class LSTM(nn.Module):
@@ -103,8 +104,8 @@ class LSTM(nn.Module):
             x = input_tensor[:, step]
             for layer_idx, cell in enumerate(self.cell_list):
                 h, c = cell(x, (self.h_list[layer_idx], self.c_list[layer_idx]))
-                self.h_list[layer_idx] = self.repackage_hidden(h)
-                self.c_list[layer_idx] = self.repackage_hidden(c)
+                self.h_list[layer_idx] = h
+                self.c_list[layer_idx] = c
                 x = h
 
         x = self.dropout_layer(x)
@@ -125,16 +126,16 @@ class LSTM(nn.Module):
         best_dict = self.state_dict()
 
         self.input_normalizer.fit(batch_generator.dataset_dict["train"].data)
-        self.output_normalizer.fit(batch_generator.dataset_dict["train"].data)
+        self.output_normalizer.fit(batch_generator.dataset_dict["train"].label)
 
         for epoch in range(self.num_epochs):
             # train and validation loop
             start_time = time.time()
-            running_train_loss = self.step_loop(batch_generator, self.train_step, 'train')
-            running_val_loss = self.step_loop(batch_generator, self.eval_step, 'validation')
+            running_train_loss = self.step_loop(batch_generator, self.train_step, self.loss_fun, 'train', denormalize=False)
+            running_val_loss = self.step_loop(batch_generator, self.eval_step, self.loss_fun, 'validation', denormalize=False)
             epoch_time = time.time() - start_time
 
-            message_str = "Epoch: {}, Train_loss: {:.3f}, Validation_loss: {:.3f}, Took {:.3f} seconds."
+            message_str = "Epoch: {}, Train_loss: {:.5f}, Validation_loss: {:.5f}, Took {:.3f} seconds."
             print(message_str.format(epoch + 1, running_train_loss, running_val_loss, epoch_time))
             # save the losses
             train_loss.append(running_train_loss)
@@ -150,34 +151,38 @@ class LSTM(nn.Module):
 
             if tolerance > self.early_stop_tolerance or epoch == self.num_epochs - 1:
                 self.load_state_dict(best_dict)
-                evaluation_val_loss = self.step_loop(batch_generator, self.eval_step, 'validation')
-                message_str = "Early exiting from epoch: {}, Rounded MAE for validation set: {:.3f}."
+                evaluation_val_loss = self.step_loop(batch_generator, self.eval_step, self.loss_fun_evaluation,
+                                                     'validation', denormalize=True)
+                message_str = "Early exiting from epoch: {}, Validation error: {:.5f}."
                 print(message_str.format(best_epoch, evaluation_val_loss))
                 break
 
         print('Training finished')
         return train_loss, val_loss, evaluation_val_loss
 
-    def step_loop(self, batch_generator, step_fun, dataset_type):
+    def step_loop(self, batch_generator, step_fun, loss_fun, dataset_type, denormalize):
         count = 0
         running_loss = 0.0
 
         for count, (input_data, output_data) in enumerate(batch_generator.generate(dataset_type)):
             input_data = self.input_normalizer.transform(input_data)
             output_data = self.output_normalizer.transform(output_data)
-            loss = step_fun(input_data, output_data[:, -1])  # many-to-one
-            running_loss += loss.detach().numpy()
+            loss = step_fun(input_data, output_data[:, -1], loss_fun, denormalize)  # many-to-one
+            try:
+                running_loss += loss.detach().numpy()
+            except:
+                running_loss += loss
 
         running_loss /= (count + 1)
 
         return running_loss
 
-    def train_step(self, input_tensor, output_tensor):
+    def train_step(self, input_tensor, output_tensor, loss_fun, denormalize):
 
         def closure():
             self.optimizer.zero_grad()
             predictions = self.forward(input_tensor)
-            loss = self.loss_fun(predictions, output_tensor)
+            loss = loss_fun(predictions, output_tensor)
             loss.backward()
             nn.utils.clip_grad_norm_(self.parameters(), self.grad_clip)
             return loss
@@ -186,10 +191,13 @@ class LSTM(nn.Module):
 
         return loss
 
-    def eval_step(self, input_tensor, output_tensor):
+    def eval_step(self, input_tensor, output_tensor, loss_fun, denormalize):
 
         predictions = self.forward(input_tensor)
-        loss = self.loss_fun(predictions, output_tensor)
+        if denormalize:
+            predictions = self.output_normalizer.inverse_transform(predictions)
+            output_tensor = self.output_normalizer.inverse_transform(output_tensor)
+        loss = loss_fun(predictions, output_tensor)
 
         return loss
 
@@ -201,5 +209,18 @@ class LSTM(nn.Module):
         """
         loss_obj = self.loss_dispatcher[self.loss_type]()
         loss = loss_obj(predictions, labels)
+
+        return loss
+
+    def loss_fun_evaluation(self, predictions, labels):
+        """
+        :param labels:
+        :param preds:
+        :return:
+        """
+        predictions = predictions.detach().numpy()
+        labels = labels.detach().numpy()
+
+        loss = haversine_dist(predictions, labels).mean()
 
         return loss

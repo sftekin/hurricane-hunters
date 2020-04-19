@@ -38,10 +38,10 @@ class HurrDataset(Dataset):
         x_buffer = torch.Tensor(x_buffer)
         y_buffer = torch.Tensor(y_buffer)
 
-        return x_buffer, y_buffer
+        return x_buffer[:, :, self.input_dim], y_buffer[:, :, self.output_dim]
 
     def __len__(self):
         return self.data.shape[0]
 
     def __getitem__(self, idx):
-        return self.data[idx, :, self.input_dim], self.label[idx, :, self.output_dim]
+        return self.data[idx], self.label[idx]
