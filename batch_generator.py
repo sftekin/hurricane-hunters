@@ -48,3 +48,27 @@ class BatchGenerator:
     def generate(self, dataset_type):
         selected_loader = self.data_loader_dict[dataset_type]
         yield from selected_loader
+
+
+if __name__ == '__main__':
+    from create_data import CreateData
+
+    batch_gen_params = {
+        'batch_size': 4,
+        'test_ratio': 0.1,
+        'val_ratio': 0.1,
+        'shuffle': True,
+        'num_works': 0,
+        'window_len': 10,
+        'output_dim': [0, 1]
+    }
+
+    data = CreateData(hurricane_path='data/ibtracs.NA.list.v04r00.csv',
+                      season_range=(1994, 2020))
+
+    batch_creator = BatchGenerator(hurr_list=data.hurr_list,
+                                   **batch_gen_params)
+
+    for x, y in batch_creator.generate('train'):
+        print(x.shape, y.shape)
+
