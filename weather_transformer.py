@@ -38,9 +38,30 @@ class WeatherTransformer:
                 raise IndexError('{} does not match with inside date'.format(file_))
             gc.collect()
 
-        print()
+    def transform_one_step(self, t, spatial_range):
+        year = str(t.year)
+        if t.month < 10:
+            month = '0' + str(t.month)
+        else:
+            month = str(t.month)
+        file_name = year + '_' + month + '.nc'
+        file_path = os.path.join(self.file_dir, file_name)
 
-    def transform(self, date_range, spatial_range):
+        nc = netCDF4.Dataset(file_path, 'r')
+
+        date_range = np.array(nc['time'][:])
+        fun = np.vectorize(lambda x: self.index_date + pd.DateOffset(hours=int(x)))
+        date_range = pd.to_datetime(fun(date_range))
+
+        data_arr = self._crop_spatial(data=nc, in_range=spatial_range)
+
+        # since we stored monthly and we just need one day
+        data_arr = data_arr[date_range == t]
+        data_arr = np.squeeze(data_arr)
+
+        return data_arr
+
+    def transform_range(self, date_range, spatial_range):
         """
 
         :param date_range: e.g pd.date_range(start='2019-01-01', end='2020-03-01', freq='3H')
