@@ -7,7 +7,6 @@ import pandas as pd
 
 class WeatherTransformer:
     def __init__(self, check=False):
-
         self.features = ['d', 'cc', 'z', 'u', 'v']
         self.file_dir = '/Volumes/data/dataset/ecmwf/atmosphere'
         self.index_date = pd.to_datetime('1900-01-01')
@@ -54,27 +53,40 @@ class WeatherTransformer:
 
         file_dates = []
         for day in date_range:
-            file_name = str(day.year) + '_' + str(day.month) + '.nc'
+            year = str(day.year)
+            if day.month < 10:
+                month = '0' + str(day.month)
+            else:
+                month = str(day.month)
+            file_name = year + '_' + month + '.nc'
             file_dates.append(file_name)
         file_dates = np.array(file_dates)
         _, idx = np.unique(file_dates, return_index=True)
         file_dates = file_dates[np.sort(idx)]
 
+        print('Spatial cropping started')
+        time_arr_list = []
         data_arr_list = []
-        for file_name in file_dates:
+        for count, file_name in enumerate(file_dates):
+            print(r'{:.2f}%'.format((count / len(file_dates)) * 100), flush=True, end='\r')
             file_path = os.path.join(self.file_dir, file_name)
             nc = netCDF4.Dataset(file_path, 'r')
+
+            time_arr = np.array(nc['time'][:], dtype=np.int)
+            time_arr_list.append(time_arr)
+
             data_arr = self._crop_spatial(data=nc, in_range=spatial_range)
             data_arr_list.append(data_arr)
             # since files are big, garbage collect the unref. files
             gc.collect()
 
-        # combine all arr on time dimension
-        data_combined = np.stack(data_arr_list, axis=0)
+        # combine all arrays on time dimension
+        data_combined = np.concatenate(data_arr_list, axis=0)
+        time_combined = np.concatenate(time_arr_list, axis=0)
 
         # temporal crop
-        total_time_stamp = len(date_range)
-        data_cropped = data_combined[:total_time_stamp]
+        temporal_idx = self._crop_temporal(time_combined, date_range)
+        data_cropped = data_combined[temporal_idx]
 
         return data_cropped
 
@@ -101,3 +113,23 @@ class WeatherTransformer:
         data_combined = np.stack(arr_list, axis=4)
 
         return data_combined
+
+    def _crop_temporal(self, time_arr, date_range):
+        fun = np.vectorize(lambda x: self.index_date + pd.DateOffset(hours=int(x)))
+        in_date_range = pd.to_datetime(fun(time_arr))
+
+        start_date, end_date = date_range[0], date_range[-1]
+        indices = (start_date <= in_date_range) & (in_date_range <= end_date)
+
+        return indices
+
+
+if __name__ == '__main__':
+    weather_tf = WeatherTransformer(check=False)
+
+    date_r = pd.date_range(start='2018-01-10', end='2019-01-12', freq='3H')
+    print('Total time length: ', len(date_r))
+    spat_r = [[40, 43], [-96, -89]]
+
+    ret_arr = weather_tf.transform(date_range=date_r, spatial_range=spat_r)
+    print(ret_arr.shape)
