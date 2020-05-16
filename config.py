@@ -46,9 +46,10 @@ class Config:
         }
 
         self.data_params = {
-            "season_range": (1994, 2020),
+            "season_range": (2000, 2020),
             "weather_im_size": (12, 12),
-            "weather_freq": 3
+            "weather_freq": 3,
+            "weather_spatial_range": [[0, 65], [-110, 10]]
         }
 
     def next(self):

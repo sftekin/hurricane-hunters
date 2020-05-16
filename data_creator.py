@@ -10,7 +10,7 @@ class DataCreator:
         self.hurricane_path = hurricane_path
         self.data_dir = os.path.dirname(hurricane_path)
         self.start_year, self.end_year = params['season_range']
-        # self.weather_spatial_range = params['weather_spatial_range']
+        self.weather_spatial_range = params['weather_spatial_range']
         self.weather_im_size = params['weather_im_size']
         self.weather_freq = params['weather_freq']
         self.check_files = params.get('check_weather_files', False)
@@ -53,30 +53,28 @@ class DataCreator:
 
             # save each hurricane as numpy array
             hurricane_list = []
+            weather_list = []
             sid_list = pd.unique(data['SID'])
             for sid in sid_list:
                 hur = data[data['SID'] == sid]
+                hur_name = hur['NAME'].iloc[0]
 
                 # check all the dates are in 3 hours freq
                 hur = self._check_dates(hur)
 
-                # extract hur array
-                hur_name = hur['NAME'].iloc[0]
-                save_path = os.path.join(hurricane_folder,
-                                         '{}_{}.npy'.format(sid, hur_name))
-                arr = hur.loc[:, 'LAT':].values
-                arr = arr.astype(np.float)
-                hurricane_list.append(arr)
-                np.save(save_path, arr)
-
-                # extract weather of hur
+                # extract hur data
                 print('\nExtracting Weather for {}'.format(hur_name))
-                weather_im = self._extract_weather(hur)
-                save_path = os.path.join(weather_folder,
-                                         '{}_{}.npy'.format(sid, hur_name))
-                np.save(save_path, weather_im)
+                weather_im, weather_num = self._extract_data(hur)
+                save_path_im = os.path.join(weather_folder, '{}_{}.npy'.format(sid, hur_name))
+                save_path_num = os.path.join(hurricane_folder, '{}_{}.npy'.format(sid, hur_name))
 
-        return hurricane_list
+                np.save(save_path_im, weather_im)
+                np.save(save_path_num, weather_num)
+
+                hurricane_list.append(weather_im)
+                weather_list.append(weather_num)
+
+            return hurricane_list
 
     def _check_dates(self, hur):
         date_range = pd.to_datetime(hur['ISO_TIME'].values)
@@ -93,24 +91,38 @@ class DataCreator:
 
         return hur[indices]
 
-    def _extract_weather(self, hur):
+    def _extract_data(self, hur):
+        hur_arr = hur.loc[:, 'LAT':].values
+        hur_arr = hur_arr.astype(np.float)
+
         hur_df = hur.loc[:, ['ISO_TIME', 'LAT', 'LON']]
         x, y = self.weather_im_size[0] / 4, self.weather_im_size[1] / 4
         print(hur_df['ISO_TIME'].values[0])
 
         ims = []
+        arr_list = []
         count = 0
         for t, lat, lon in hur_df.values:
             if count % 10 == 0:
                 print(r'{:.2f}%'.format((count / len(hur_df.values)) * 100))
             spatial_r = [[lat - x/2, lat + x/2], [lon - y/2, lon + y/2]]
-            arr = self.weather_tf.transform_one_step(t=t, spatial_range=spatial_r)
-            arr = self._check_dimension(in_arr=arr)
-            ims.append(arr)
-            count += 1
-        ims = np.stack(ims, axis=0)
 
-        return ims
+            if self._check_in_range(spatial_r, self.weather_spatial_range):
+                # extract image
+                im_arr = self.weather_tf.transform_one_step(t=t, spatial_range=spatial_r)
+                im_arr = self._check_dimension(in_arr=im_arr)
+                ims.append(im_arr)
+
+                # extract arr
+                arr = hur_arr[count]
+                arr_list.append(arr)
+
+            count += 1
+
+        ims = np.stack(ims, axis=0)
+        nums = np.stack(arr_list, axis=0)
+
+        return ims, nums
 
     def _check_dimension(self, in_arr):
         l, m, n, d = in_arr.shape
@@ -133,11 +145,18 @@ class DataCreator:
             if arr_pad.shape > self.weather_im_size:
                 arr_pad = arr_pad[:, :self.weather_im_size[0]+1,
                                   :self.weather_im_size[1]+1, :]
-
             in_arr = arr_pad
 
         return in_arr
 
+    @staticmethod
+    def _check_in_range(r1, r2):
+        if (r1[0][0] >= r2[0][0]) & (r1[0][1] <= r2[0][1]) & \
+                (r1[1][0] >= r2[1][0]) & (r1[1][1] <= r2[1][1]):
+            in_range = True
+        else:
+            in_range = False
+        return in_range
 
 
 if __name__ == '__main__':
