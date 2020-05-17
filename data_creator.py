@@ -13,24 +13,34 @@ class DataCreator:
         self.weather_spatial_range = params['weather_spatial_range']
         self.weather_im_size = params['weather_im_size']
         self.weather_freq = params['weather_freq']
+        self.weather_raw_dir = params['weather_raw_dir']
         self.check_files = params.get('check_weather_files', False)
+        self.load = params.get('load', True)
 
-        self.weather_tf = WeatherTransformer(check=self.check_files)
-        self.hurricane_list = self.__create_hur_data()
+        self.hurricane_list, self.weather_list = self.__create_hur_data()
 
     def __create_hur_data(self):
         hurricane_folder = os.path.join(self.data_dir, 'hurricanes')
         weather_folder = os.path.join(self.data_dir, 'weather')
-        if os.path.isdir(hurricane_folder):
+        if self.load:
             print('Loading from saved folder')
             hurricane_list = []
             for hurricane_file in os.listdir(hurricane_folder):
                 hurricane_file_path = os.path.join(hurricane_folder, hurricane_file)
                 hurricane_list.append(np.load(hurricane_file_path, allow_pickle=True))
+
+            weather_list = []
+            for weather_file in os.listdir(weather_folder):
+                weather_file_path = os.path.join(weather_folder, weather_file)
+                weather_list.append(np.load(weather_file_path, allow_pickle=True))
+
         else:
+            weather_tf = WeatherTransformer(file_dir=self.weather_raw_dir, check=self.check_files)
+
             # save each hurricane as numpy array
-            os.makedirs(hurricane_folder)
-            os.makedirs(weather_folder)
+            if not os.path.isdir(hurricane_folder) and not os.path.isdir(weather_folder):
+                os.makedirs(hurricane_folder)
+                os.makedirs(weather_folder)
 
             print('Loading Data...')
             data = pd.read_csv(self.hurricane_path, na_values=' ')
@@ -64,7 +74,7 @@ class DataCreator:
 
                 # extract hur data
                 print('\nExtracting Weather for {}'.format(hur_name))
-                weather_im, weather_num = self._extract_data(hur)
+                weather_im, weather_num = self._extract_data(hur, weather_tf)
                 save_path_im = os.path.join(weather_folder, '{}_{}.npy'.format(sid, hur_name))
                 save_path_num = os.path.join(hurricane_folder, '{}_{}.npy'.format(sid, hur_name))
 
@@ -74,7 +84,7 @@ class DataCreator:
                 hurricane_list.append(weather_im)
                 weather_list.append(weather_num)
 
-            return hurricane_list
+        return hurricane_list, weather_list
 
     def _check_dates(self, hur):
         date_range = pd.to_datetime(hur['ISO_TIME'].values)
@@ -91,7 +101,7 @@ class DataCreator:
 
         return hur[indices]
 
-    def _extract_data(self, hur):
+    def _extract_data(self, hur, weather_tf):
         hur_arr = hur.loc[:, 'LAT':].values
         hur_arr = hur_arr.astype(np.float)
 
@@ -109,7 +119,7 @@ class DataCreator:
 
             if self._check_in_range(spatial_r, self.weather_spatial_range):
                 # extract image
-                im_arr = self.weather_tf.transform_one_step(t=t, spatial_range=spatial_r)
+                im_arr = weather_tf.transform_one_step(t=t, spatial_range=spatial_r)
                 im_arr = self._check_dimension(in_arr=im_arr)
                 ims.append(im_arr)
 
@@ -162,6 +172,14 @@ class DataCreator:
 if __name__ == '__main__':
     hurricane_path = 'data/ibtracs.NA.list.v04r00.csv'
     parameters = {
-        'season_range': (1994, 2020)
+        "season_range": (2015, 2020),
+        "weather_im_size": (25, 25),
+        "weather_freq": 3,
+        "weather_spatial_range": [[0, 65], [-110, 10]],
+        "weather_raw_dir": 'data/weather_raw',
+        "load": True
     }
+    # '/Volumes/data/dataset/ecmwf/atmosphere'
+
     data_creator = DataCreator(hurricane_path, **parameters)
+    print()

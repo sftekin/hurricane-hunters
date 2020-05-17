@@ -35,27 +35,34 @@ def select_best_model(results_dir):
 
 
 def main(overwrite_flag):
-    model_name = 'lstm'
+    model_name = 'trajgru'
     data_folder = 'data'
     hurricane_path = os.path.join(data_folder, 'ibtracs.NA.list.v04r00.csv')
     results_folder = 'results'
 
     config_obj = Config(model_name)
-    hurricane_list = DataCreator(hurricane_path, **config_obj.data_params).hurricane_list
+    data = DataCreator(hurricane_path, **config_obj.data_params)
+    hurricane_list, weather_list = data.hurricane_list, data.weather_list
 
     print("Starting experiments")
     for exp_count, conf in enumerate(config_obj.conf_list):
         print('\nExperiment {}'.format(exp_count))
         print('-*-' * 10)
-        print(conf)
+        # print(conf)
 
         batch_generator = BatchGenerator(hurricane_list=hurricane_list,
+                                         weather_list=weather_list,
                                          batch_size=conf["batch_size"],
                                          shuffle=conf['shuffle'],
                                          window_len_input=conf["window_len_input"],
                                          window_len_output=conf["window_len_output"],
+                                         weather_info=conf['weather_info'],
                                          stride=conf["stride"],
+
                                          **config_obj.experiment_params)
+
+        for x, y in batch_generator.generate('train'):
+            print(x.shape, y.shape)
 
         train(batch_generator, exp_count, overwrite_flag, **conf)
 

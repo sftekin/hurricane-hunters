@@ -6,9 +6,9 @@ import pandas as pd
 
 
 class WeatherTransformer:
-    def __init__(self, check=False):
+    def __init__(self, file_dir, check=False):
+        self.file_dir = file_dir
         self.features = ['d', 'cc', 'z', 'u', 'v']
-        self.file_dir = '/Volumes/data/dataset/ecmwf/atmosphere'
         self.index_date = pd.to_datetime('1900-01-01')
         self.freq = 3
 
