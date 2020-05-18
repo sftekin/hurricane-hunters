@@ -56,15 +56,11 @@ def main(overwrite_flag):
                                          shuffle=conf['shuffle'],
                                          window_len_input=conf["window_len_input"],
                                          window_len_output=conf["window_len_output"],
-                                         weather_info=conf['weather_info'],
                                          stride=conf["stride"],
 
                                          **config_obj.experiment_params)
 
-        for x, y in batch_generator.generate('train'):
-            print(x.shape, y.shape)
-
-        train(batch_generator, exp_count, overwrite_flag, **conf)
+        train(model_name, batch_generator, exp_count, overwrite_flag, **conf)
 
     best_model, best_conf = select_best_model(results_folder)
 

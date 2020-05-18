@@ -20,13 +20,11 @@ model_params_pool = {
         "window_len_output": [10],
         "stride": [1],
         "hidden_dim_list": [[8, 8], [8, 8, 8], [32, 32]],
-        "norm_method": ["standard"],
-        "weather_info": [False]
+        "norm_method": ["standard"]
     },
     "trajgru": {
         "input_size": [(25, 25)],
-        "input_dim": [15],
-        "output_dim": [1],
+        "en_dec_output_dim": [1],
         "window_in": [10],
         "window_out": [10],
         "regression": ["linear"],
@@ -58,9 +56,11 @@ model_params_pool = {
         }],
         "output_conv_dims": [[16, 16]],
         "output_conv_kernels": [[5, 1]],
-
+        "relu_alpha": [1],
+        "stateful": [False],
+        "clip": [5],
         # finetune params
-        "batch_size": [32, 128],
+        "batch_size": [4],
         "shuffle": [True],
         "learning_rate": [3e-4, 1e-3, 3e-3],
         "num_epochs": [100],
@@ -71,11 +71,10 @@ model_params_pool = {
         "dropout_rate": [0, 0.1],
         "early_stop_tolerance": [5],
         "final_act_type": ["leaky_relu"],
-        "relu_alpha": [1],
         "window_len_input": [10],
         "window_len_output": [10],
         "stride": [1],
-        "weather_info": [False]
+        "norm_method": ["standard"],
     }
 }
 

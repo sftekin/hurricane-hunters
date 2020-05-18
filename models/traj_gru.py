@@ -1,9 +1,19 @@
+import re
+import time
 import torch
 import torch.nn as nn
+import torch.optim as optim
+
 from torch.autograd import Variable
+from normalizer import Normalizer
+from copy import deepcopy
+from static_helpers import haversine_dist
 
 
 class TrajGRU(nn.Module):
+
+    loss_dispatcher = {"l2": nn.MSELoss}
+
     class TrajGRUCell(nn.Module):
         def __init__(self, input_size, input_dim, hidden_dim,
                      kernel_size, bias, connection):
@@ -341,11 +351,35 @@ class TrajGRU(nn.Module):
 
             return input_sizes
 
-    def __init__(self, params):
+    def __init__(self, input_dim, fc_output_dim, **params):
+        super(TrajGRU, self).__init__()
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+        self.input_dim = input_dim * 3
+        self.fc_output_dim = fc_output_dim
+
+        self.loss_type = params["loss_type"]
+        self.learning_rate = params["learning_rate"]
+        self.optimizer_type = params["optimizer_type"]
+        self.l2_reg = params["l2_reg"]
+
+        self.num_epochs = params["num_epochs"]
+        self.early_stop_tolerance = params["early_stop_tolerance"]
+        self.norm_method = params["norm_method"]
+
+        self.window_in = params['window_in']
+        self.window_out = params['window_out']
         self.input_size = params['input_size']
-        self.input_dim = params['input_dim']
-        self.output_dim = params['output_dim']
+        self.en_dec_output_dim = params['en_dec_output_dim']
+
+        self.encoder_conf = self.__remove_prefix(params['encoder_conf'])
+        self.decoder_conf = self.__remove_prefix(params['decoder_conf'])
+
+        self.regression = params.get("regression", "logistic")
+        self.loss_type = params.get("loss_type", "BCE")
+        self.is_stateful = params['stateful']
+        self.relu_alpha = params["relu_alpha"]
+        self.clip = params['clip']
 
         # output conv conf
         self.conv_dims = params['output_conv_dims']
@@ -360,7 +394,6 @@ class TrajGRU(nn.Module):
         encoder_layer_sizes = self.encoder.list_of_sizes
 
         self.decoder = TrajGRU.DecoderBlock(encoder_layer_sizes=encoder_layer_sizes,
-                                            output_dim=self.output_dim,
                                             window_out=self.window_out,
                                             **self.decoder_conf)
         self.output_conv = nn.Sequential(
@@ -369,31 +402,151 @@ class TrajGRU(nn.Module):
                       kernel_size=self.conv_kernels[0],
                       padding=self.conv_kernels[0] // 2),
             nn.Conv2d(in_channels=self.conv_dims[1],
-                      out_channels=self.output_dim,
+                      out_channels=self.en_dec_output_dim,
                       kernel_size=self.conv_kernels[1],
                       padding=self.conv_kernels[1] // 2)
         )
 
+        self.fc = nn.Linear(in_features=self.en_dec_output_dim * self.input_size[0] * self.input_size[1],
+                            out_features=self.fc_output_dim)
+        self.final_act = nn.LeakyReLU(self.relu_alpha)
+
+        self.hidden_state = None
+
+        self.input_normalizer = Normalizer(self.norm_method)
+        self.output_normalizer = Normalizer(self.norm_method)
+
         # set optimizer
         self._set_optimizer()
 
-    def forward(self, input_tensor, early_side_info_dict, late_side_info_dict):
+    def fit(self, batch_generator):
+        print('Training starts...')
+        train_loss = []
+        val_loss = []
+
+        tolerance = 0
+        best_epoch = 0
+        best_val_loss = 1e6
+        evaluation_val_loss = best_val_loss
+        best_dict = self.state_dict()
+
+        data_list = []
+        label_list = []
+        for x, y in batch_generator.generate('train'):
+            data_list.append(x)
+            label_list.append(y)
+
+        self.input_normalizer.fit(torch.cat(data_list))
+        self.output_normalizer.fit(torch.cat(label_list))
+
+        for epoch in range(self.num_epochs):
+            # train and validation loop
+            start_time = time.time()
+            running_train_loss = self.step_loop(batch_generator, self.train_step, self.loss_fun, 'train', denormalize=False)
+            running_val_loss = self.step_loop(batch_generator, self.eval_step, self.loss_fun, 'validation', denormalize=False)
+            epoch_time = time.time() - start_time
+
+            message_str = "Epoch: {}, Train_loss: {:.5f}, Validation_loss: {:.5f}, Took {:.3f} seconds."
+            print(message_str.format(epoch + 1, running_train_loss, running_val_loss, epoch_time))
+            # save the losses
+            train_loss.append(running_train_loss)
+            val_loss.append(running_val_loss)
+
+            if running_val_loss < best_val_loss:
+                best_epoch = epoch + 1
+                best_val_loss = running_val_loss
+                best_dict = deepcopy(self.state_dict())  # brutal
+                tolerance = 0
+            else:
+                tolerance += 1
+
+            if tolerance > self.early_stop_tolerance or epoch == self.num_epochs - 1:
+                self.load_state_dict(best_dict)
+                evaluation_val_loss = self.step_loop(batch_generator, self.eval_step, self.loss_fun_evaluation,
+                                                     'validation', denormalize=True)
+                message_str = "Early exiting from epoch: {}, Validation error: {:.5f}."
+                print(message_str.format(best_epoch, evaluation_val_loss))
+                break
+
+        print('Training finished')
+        return train_loss, val_loss, evaluation_val_loss
+
+    def step_loop(self, batch_generator, step_fun, loss_fun, dataset_type, denormalize):
+        count = 0
+        running_loss = 0.0
+
+        for count, (input_data, output_data) in enumerate(batch_generator.generate(dataset_type)):
+            input_data = self.input_normalizer.transform(input_data)
+            output_data = self.output_normalizer.transform(output_data)
+            loss = step_fun(input_data, output_data, loss_fun, denormalize)  # many-to-one
+            try:
+                running_loss += loss.detach().numpy()
+            except:
+                running_loss += loss
+
+        running_loss /= (count + 1)
+
+        return running_loss
+
+    def train_step(self, input_tensor, output_tensor, loss_fun, denormalize):
+
+        def closure():
+            self.optimizer.zero_grad()
+            predictions = self.forward(input_tensor)
+            loss = loss_fun(predictions, output_tensor)
+            loss.backward()
+            nn.utils.clip_grad_norm_(self.parameters(), self.clip)
+            return loss
+
+        loss = self.optimizer.step(closure)
+
+        return loss
+
+    def eval_step(self, input_tensor, output_tensor, loss_fun, denormalize):
+
+        predictions = self.forward(input_tensor)
+        if denormalize:
+            predictions = self.output_normalizer.inverse_transform(predictions)
+            output_tensor = self.output_normalizer.inverse_transform(output_tensor)
+        loss = loss_fun(predictions, output_tensor)
+
+        return loss
+
+    def loss_fun(self, predictions, labels):
+        """
+        :param predictions: BxD_out
+        :param labels: BxD_out
+        :return:
+        """
+        loss_obj = self.loss_dispatcher[self.loss_type]()
+        loss = loss_obj(predictions, labels)
+
+        return loss
+
+    def loss_fun_evaluation(self, predictions, labels):
+        """
+        :param labels:
+        :param preds:
+        :return:
+        """
+        predictions = predictions.detach().numpy()
+        labels = labels.detach().numpy()
+
+        loss = haversine_dist(predictions, labels).mean()
+
+        return loss
+
+    def forward(self, input_tensor):
         """
         :param input_tensor: (B, T, M, N, D)
         :type input_tensor: tensor
-        :param early_side_info_dict: first output of self.organize_side_info_dict
-        :type early_side_info_dict: dict
-        :param late_side_info_dict: second output of self.organize_side_info_dict
-        :type late_side_info_dict: dict
         :return: (B, T', M, N, D')
         """
+        batch_size = input_tensor.shape[0]
+        self.hidden_state = self.__init_hidden(batch_size=batch_size)
+
         # (b, t, m, n, d) -> (b, t, d, m, n)
         input_tensor = input_tensor.permute(0, 1, 4, 2, 3)
-
-        if self.early_side_info_block:
-            input_tensor = self.forward_early_late_block(input_tensor=input_tensor,
-                                                         side_info_dict=early_side_info_dict,
-                                                         block_type='early')
 
         # forward encoder block
         cur_states = self.hidden_state
@@ -413,15 +566,16 @@ class TrajGRU(nn.Module):
 
         block_output = torch.stack(block_output_list, dim=1)
 
-        if self.late_side_info_block:
-            block_output = self.forward_early_late_block(input_tensor=block_output,
-                                                         side_info_dict=late_side_info_dict,
-                                                         block_type='late')
-        # (b, t, d, m, n) -> (b, t, m, n, d)
-        final_output = block_output.permute(0, 1, 3, 4, 2)
+        # (b, t, d, m, n) -> (b, t, m*n, d)
+        block_output = block_output.permute(0, 1, 3, 4, 2)
+        block_output = block_output.reshape(batch_size, self.window_out, -1)
 
-        if self.regression == 'logistic':
-            final_output = torch.sigmoid(final_output)
+        final_output_list = []
+        for t in range(self.window_out):
+            fc_out = self.final_act(self.fc(block_output[:, t]))
+            final_output_list.append(fc_out)
+
+        final_output = torch.stack(final_output_list, dim=1)
 
         return final_output
 
@@ -432,3 +586,60 @@ class TrajGRU(nn.Module):
         decoder_input = torch.zeros_like(self.hidden_state[-1]).to(self.device)
         decoder_input = decoder_input.unsqueeze(1).expand(-1, self.window_out, -1, -1, -1)
         return decoder_input
+
+    def reset_per_epoch(self, **kwargs):
+        """
+        This will be called at beginning of every epoch
+        :param kwargs: dict
+        :return:
+        """
+        batch_size = kwargs['batch_size']
+        self.hidden_state = self.__init_hidden(batch_size=batch_size)
+
+    def __init_hidden(self, batch_size):
+        """
+        Initializes hidden states of blocks
+        :param batch_size: int
+        :return: list of states, e.g [state, state, ...]
+        """
+        # only the first block hidden is needed
+        hidden_list = self.encoder.init_memory(batch_size=batch_size, device=self.device)
+
+        return hidden_list
+
+    def __repackage_hidden(self, h):
+        """
+        Wraps hidden states in new Tensors, to detach them from their history.
+        :param h: list of states, e.g [state, state, ...]
+        """
+        if isinstance(h, torch.Tensor):
+            return h.detach()
+        else:
+            return tuple(self.__repackage_hidden(v) for v in h)
+
+    @staticmethod
+    def __remove_prefix(in_dict):
+        """
+        removes 'de' and 'en' from input dictionary keys
+        :param in_dict: input dictionary
+        :type in_dict: dict
+        :return: dict
+        """
+        new_keys = [re.sub(r'\b(en|de)_', '', old_key) for old_key in in_dict.keys()]
+        return_dict = {key: value for key, value in zip(new_keys, in_dict.values())}
+
+        return return_dict
+
+    def _set_optimizer(self):  # TODO (fi) enable different optimizers !
+        """
+        Sets the optimizer
+        """
+        self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=self.l2_reg)
+
+    def set_hidden_state(self, state):
+        """
+        stores the hidden states
+        :param state: list of states, e.g [state, state, ...]
+        :type state: list
+        """
+        self.hidden_state = state

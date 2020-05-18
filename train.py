@@ -2,9 +2,15 @@ import os
 import pickle as pkl
 import matplotlib.pyplot as plt
 from models.lstm import LSTM
+from models.traj_gru import TrajGRU
+
+model_disp = {
+    'lstm': LSTM,
+    'trajgru': TrajGRU
+}
 
 
-def train(batch_generator, exp_count, overwrite_flag, **params):
+def train(model_name, batch_generator, exp_count, overwrite_flag, **params):
 
     if overwrite_flag:
         tag = exp_count
@@ -25,7 +31,7 @@ def train(batch_generator, exp_count, overwrite_flag, **params):
     output_dim = len(batch_generator.output_dim)
 
     try:
-        model = LSTM(input_dim, output_dim, **params)
+        model = model_disp[model_name](input_dim, output_dim, **params)
         train_loss, val_loss, evaluation_val_loss = model.fit(batch_generator)
     except Exception as error:
         os.rmdir(save_dir)
