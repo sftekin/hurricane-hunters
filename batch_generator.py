@@ -83,6 +83,8 @@ if __name__ == '__main__':
                                      weather_list=data_creator.weather_list,
                                      **params)
 
-    for x, y in batch_generator.generate('train'):
-        print(x.shape, y.shape)
+    print(len(batch_generator.dataset_dict['train']))
+
+    # for x, y in batch_generator.generate('train'):
+    #     print(x.shape, y.shape)
 

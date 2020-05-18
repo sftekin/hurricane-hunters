@@ -18,6 +18,8 @@ class HurrDataset:
         self.hur_output_dim = params['hur_output_dim']
         self.return_mode = params['return_mode']
 
+        self.__count = 0
+
     def _create_buffer(self, data, label):
         x_buffer = []
         y_buffer = []
@@ -39,6 +41,7 @@ class HurrDataset:
 
     def next(self):
         for idx in range(self.data_len):
+            self.__count = idx
             hur_path = self.hurricane_list[idx]
             weather_path = self.weather_list[idx]
 
@@ -81,5 +84,9 @@ class HurrDataset:
 
             # return batches
             for i in range(0, len(x), self.batch_size):
-                if i+self.batch_size <= len(x):
+                if i+self.batch_size < len(x):
                     yield x[i:i+self.batch_size], y[i:i+self.batch_size]
+
+    @property
+    def count(self):
+        return self.__count

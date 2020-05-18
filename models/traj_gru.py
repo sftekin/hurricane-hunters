@@ -446,7 +446,7 @@ class TrajGRU(nn.Module):
             running_val_loss = self.step_loop(batch_generator, self.eval_step, self.loss_fun, 'validation', denormalize=False)
             epoch_time = time.time() - start_time
 
-            message_str = "Epoch: {}, Train_loss: {:.5f}, Validation_loss: {:.5f}, Took {:.3f} seconds."
+            message_str = "\nEpoch: {}, Train_loss: {:.5f}, Validation_loss: {:.5f}, Took {:.3f} seconds."
             print(message_str.format(epoch + 1, running_train_loss, running_val_loss, epoch_time))
             # save the losses
             train_loss.append(running_train_loss)
@@ -474,8 +474,10 @@ class TrajGRU(nn.Module):
     def step_loop(self, batch_generator, step_fun, loss_fun, dataset_type, denormalize):
         count = 0
         running_loss = 0.0
-
+        dataset = batch_generator.dataset_dict[dataset_type]
+        total_len = len(dataset)
         for count, (input_data, output_data) in enumerate(batch_generator.generate(dataset_type)):
+            print("\r{:.2f}%".format(dataset.count * 100 / total_len), flush=True, end='')
             input_data = self.input_normalizer.transform(input_data)
             output_data = self.output_normalizer.transform(output_data)
             loss = step_fun(input_data, output_data, loss_fun, denormalize)  # many-to-one
