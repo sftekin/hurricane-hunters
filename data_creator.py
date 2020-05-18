@@ -15,24 +15,24 @@ class DataCreator:
         self.weather_freq = params['weather_freq']
         self.weather_raw_dir = params['weather_raw_dir']
         self.check_files = params.get('check_weather_files', False)
-        self.load = params.get('load', True)
+        self.rebuild = params.get('rebuild', True)
 
         self.hurricane_list, self.weather_list = self.__create_hur_data()
 
     def __create_hur_data(self):
         hurricane_folder = os.path.join(self.data_dir, 'hurricanes')
         weather_folder = os.path.join(self.data_dir, 'weather')
-        if self.load:
+        if not self.rebuild:
             print('Loading from saved folder')
             hurricane_list = []
             for hurricane_file in os.listdir(hurricane_folder):
                 hurricane_file_path = os.path.join(hurricane_folder, hurricane_file)
-                hurricane_list.append(np.load(hurricane_file_path, allow_pickle=True))
+                hurricane_list.append(hurricane_file_path)
 
             weather_list = []
             for weather_file in os.listdir(weather_folder):
                 weather_file_path = os.path.join(weather_folder, weather_file)
-                weather_list.append(np.load(weather_file_path, allow_pickle=True))
+                weather_list.append(weather_file_path)
 
         else:
             weather_tf = WeatherTransformer(file_dir=self.weather_raw_dir, check=self.check_files)

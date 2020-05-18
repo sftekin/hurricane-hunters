@@ -75,7 +75,7 @@ model_params_pool = {
         "window_len_input": [10],
         "window_len_output": [10],
         "stride": [1],
-        "weather_info": [True]
+        "weather_info": [False]
     }
 }
 
@@ -96,7 +96,9 @@ class Config:
             "val_ratio": 0.2,
             "test_ratio": 0.2,
             "hur_input_dim": list(range(7)),
+            "weather_input_dim": list(range(5)),
             "hur_output_dim": list(range(2)),
+            "return_mode": 'weather'
         }
 
         self.data_params = {
@@ -105,7 +107,7 @@ class Config:
             "weather_freq": 3,
             "weather_spatial_range": [[0, 65], [-110, 10]],
             "weather_raw_dir": 'data/weather_raw',
-            "load": True
+            "rebuild": False
         }
 
     def next(self):
