@@ -48,16 +48,14 @@ def main(overwrite_flag):
     for exp_count, conf in enumerate(config_obj.conf_list):
         print('\nExperiment {}'.format(exp_count))
         print('-*-' * 10)
-        # print(conf)
 
         batch_generator = BatchGenerator(hurricane_list=hurricane_list,
                                          weather_list=weather_list,
                                          batch_size=conf["batch_size"],
-                                         shuffle=conf['shuffle'],
-                                         window_len_input=conf["window_len_input"],
-                                         window_len_output=conf["window_len_output"],
-                                         stride=conf["stride"],
-
+                                         window_len=conf["window_len"],
+                                         phase_shift=conf["phase_shift"],
+                                         return_mode=conf['return_mode'],
+                                         cut_start=conf['cut_start'],
                                          **config_obj.experiment_params)
 
         train(model_name, batch_generator, exp_count, overwrite_flag, **conf)

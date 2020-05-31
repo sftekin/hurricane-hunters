@@ -60,10 +60,8 @@ model_params_pool = {
         "stateful": [False],
         "clip": [5],
         # finetune params
-        "batch_size": [4],
-        "shuffle": [True],
         "learning_rate": [3e-4, 1e-3, 3e-3],
-        "num_epochs": [100],
+        "num_epochs": [200],
         "loss_type": ["l2"],
         "optimizer_type": ["adam"],
         "grad_clip": [1],
@@ -71,10 +69,14 @@ model_params_pool = {
         "dropout_rate": [0, 0.1],
         "early_stop_tolerance": [5],
         "final_act_type": ["leaky_relu"],
-        "window_len_input": [10],
-        "window_len_output": [10],
-        "stride": [1],
         "norm_method": ["standard"],
+        # batch gen params
+        "batch_size": [1],
+        "shuffle": [True],
+        "window_len": [10],
+        "return_mode": ['weather'],
+        "phase_shift": [1],
+        "cut_start": [False]
     }
 }
 
@@ -92,12 +94,11 @@ class Config:
 
         self.experiment_params = {
             "num_works": 1,
-            "val_ratio": 0.2,
-            "test_ratio": 0.2,
+            "val_ratio": 0.1,
+            "test_ratio": 0.1,
             "hur_input_dim": list(range(7)),
             "weather_input_dim": list(range(5)),
             "hur_output_dim": list(range(2)),
-            "return_mode": 'weather'
         }
 
         self.data_params = {

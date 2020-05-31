@@ -13,15 +13,12 @@ class BatchGenerator:
         else:
             self.input_dim = self.params['weather_input_dim']
         self.output_dim = self.params['hur_output_dim']
-
         self.batch_size = params['batch_size']
         self.test_ratio = params['test_ratio']
         self.val_ratio = params['val_ratio']
-        self.num_works = params.get('num_works', 1)
 
         self.hurricane_dict = self._split_data(self.hurricane_list)
         self.weather_dict = self._split_data(self.weather_list)
-
         self.dataset_dict = self._create_sets()
 
     def _split_data(self, in_data):
@@ -56,18 +53,16 @@ if __name__ == '__main__':
     from data_creator import DataCreator
 
     params = {
-        'batch_size': 4,
+        'batch_size': 1,
         'test_ratio': 0.1,
         'val_ratio': 0.1,
-        'shuffle': True,
-        'num_works': 0,
-        'window_len_input': 10,
-        'window_len_output': 10,
+        'window_len': 10,
         'hur_input_dim': list(range(7)),
         'hur_output_dim': [0, 1],
         'weather_input_dim': list(range(5)),
         'return_mode': 'weather',
-        'stride': 1
+        'phase_shift': 1,
+        'cut_start': False
     }
 
     data_params = {
@@ -85,6 +80,6 @@ if __name__ == '__main__':
 
     print(len(batch_generator.dataset_dict['train']))
 
-    # for x, y in batch_generator.generate('train'):
-    #     print(x.shape, y.shape)
+    for x, y in batch_generator.generate('train'):
+        print(x.shape, y.shape)
 

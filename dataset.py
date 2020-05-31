@@ -10,34 +10,20 @@ class HurrDataset:
         self.data_len = len(self.hurricane_list)
         # I've assumed input and output window_len are equal
         self.batch_size = params['batch_size']
-        self.window_len_input = params['window_len_input']
-        self.window_len_output = params['window_len_output']
-        self.stride = params['stride']
-        self.hur_input_dim = params['hur_input_dim']
-        self.weather_input_dim = params['weather_input_dim']
-        self.hur_output_dim = params['hur_output_dim']
+        self.window_len = params['window_len']
+        # self.stride = params['stride']
+        self.phase_shift = params['phase_shift']
+        self.cut_start = params['cut_start']
         self.return_mode = params['return_mode']
+        if self.return_mode == 'weather':
+            self.weather_input_dim = params['weather_input_dim']
+        elif self.return_mode == 'hurricane':
+            self.hur_input_dim = params['hur_input_dim']
+        else:
+            raise KeyError("return mode: {}".format(self.return_mode))
+        self.hur_output_dim = params['hur_output_dim']
 
         self.__count = 0
-
-    def _create_buffer(self, data, label):
-        x_buffer = []
-        y_buffer = []
-        for n in range(0, data.shape[0] - (self.window_len_input + self.window_len_output), self.stride):
-            x = data[n:n+self.window_len_input, :]
-            y = label[n+self.window_len_input:n+self.window_len_output+self.window_len_output, :]
-
-            x_buffer.append(x)
-            y_buffer.append(y)
-
-        # target and data are in shape of (N, window_len, D)
-        x_buffer = np.stack(x_buffer, axis=0)
-        y_buffer = np.stack(y_buffer, axis=0)
-
-        return x_buffer, y_buffer
-
-    def __len__(self):
-        return self.data_len
 
     def next(self):
         for idx in range(self.data_len):
@@ -46,9 +32,13 @@ class HurrDataset:
             weather_path = self.weather_list[idx]
 
             # load hurricane sample
+            hur_name = hur_path.split('_')[-1].split('.')[0]
             hur_data = np.load(hur_path, allow_pickle=True)
 
-            if len(hur_data) < self.window_len_input + self.window_len_output:
+            # check whether we can create enough batches from it
+            t_dim = hur_data.shape[0]
+            if t_dim < (self.window_len * self.batch_size):
+                print('Cant produce batch for hurricane {}'.format(hur_name))
                 continue
 
             if self.return_mode == 'weather':
@@ -62,30 +52,64 @@ class HurrDataset:
                 weather_data = weather_data.reshape((t, m, n, d*l))
 
                 # generate batch
-                x, y = self._create_buffer(data=weather_data, label=hur_data)
+                x_buff = self._create_buffer(data=weather_data)
+                y_buff = self._create_buffer(data=hur_data,
+                                             chosen_dims=self.hur_output_dim,
+                                             phase_shift=self.phase_shift)
 
-                # format label
-                y = y[:, :, self.hur_output_dim]
-                y = y[1:] - y[:-1]
-
-            elif self.return_mode == 'hurricane':
-                # generate batch
-                x, y = self._create_buffer(data=hur_data, label=hur_data)
-
-                # format data and label
-                x = x[:, :, self.hur_input_dim]
-                y = y[:, :, self.hur_output_dim]
             else:
-                raise KeyError("return mode: {}".format(self.return_mode))
+                # generate batch
+                x_buff = self._create_buffer(data=hur_data, chosen_dims=self.hur_input_dim)
+                y_buff = self._create_buffer(data=hur_data,
+                                             chosen_dims=self.hur_output_dim,
+                                             phase_shift=self.phase_shift)
 
-            # convert to tensor
-            x = torch.Tensor(x)
-            y = torch.Tensor(y)
+            if len(y_buff) == 0:
+                print('Cant produce batch for hurricane {}'.format(hur_name))
+                continue
 
             # return batches
-            for i in range(0, len(x), self.batch_size):
-                if i+self.batch_size < len(x):
-                    yield x[i:i+self.batch_size], y[i:i+self.batch_size]
+            for i in range(len(y_buff)):
+                # convert to tensor
+                x = torch.tensor(x_buff[i])
+                y = torch.tensor(y_buff[i])
+
+                yield x, y
+
+    def _create_buffer(self, data, chosen_dims=None, phase_shift=0):
+        data = self._configure_data(data=data, phase_shift=phase_shift)
+        total_frame = data.shape[1]
+
+        stacked_data = []
+        for i in range(0, total_frame, self.window_len):
+            batch = data[:, i:i+self.window_len]
+            if chosen_dims is not None:
+                batch = batch[..., chosen_dims]
+            stacked_data.append(batch)
+
+        return stacked_data
+
+    def _configure_data(self, data, phase_shift):
+        data = data[phase_shift:]
+        t_dim = data.shape[0]
+        other_dims = data.shape[1:]
+
+        # Keep only enough time steps to make full batches
+        n_batches = t_dim // (self.batch_size * self.window_len)
+        if self.cut_start:
+            start_time_step = t_dim - (n_batches * self.batch_size * self.window_len)
+            data = data[start_time_step:]
+        else:
+            end_time_step = n_batches * self.batch_size * self.window_len
+            data = data[:end_time_step]
+
+        # Reshape into batch_size rows
+        data = data.reshape((self.batch_size, -1, *other_dims))
+
+        return data
+
+    def __len__(self):
+        return self.data_len
 
     @property
     def count(self):
