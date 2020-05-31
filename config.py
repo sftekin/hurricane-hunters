@@ -4,23 +4,23 @@ from random import shuffle
 
 model_params_pool = {
     "lstm": {
-        "batch_size": [32, 128],
+        "batch_size": [32],
         "shuffle": [True],
-        "learning_rate": [3e-4, 1e-3, 3e-3],
-        "num_epochs": [100],
+        "learning_rate": [3e-3],
+        "num_epochs": [1],
         "loss_type": ["l2"],
         "optimizer_type": ["adam"],
-        "grad_clip": [1],
-        "l2_reg": [0, 1e-4],
-        "dropout_rate": [0, 0.1],
+        "grad_clip": [10],
+        "l2_reg": [0],
+        "dropout_rate": [0],
         "early_stop_tolerance": [5],
-        "final_act_type": ["leaky_relu"],
+        "final_act_type": ["tanh"],
         "relu_alpha": [1],
         "window_len_input": [10],
         "window_len_output": [10],
         "stride": [1],
         "hidden_dim_list": [[8, 8], [8, 8, 8], [32, 32]],
-        "norm_method": ["standard"]
+        "norm_method": ["standard"],
     },
     "trajgru": {
         "input_size": [(25, 25)],

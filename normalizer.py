@@ -24,8 +24,10 @@ class Normalizer:
 
         if self.method == "none":
             return
-        
-        fit_dispatcher[self.method](input_tensor)
+        elif isinstance(self.method, str):
+            fit_dispatcher[self.method](input_tensor)
+        else:
+            pass
         
     def __fit_minmax(self, input_tensor):
         shape = input_tensor.shape
@@ -44,12 +46,15 @@ class Normalizer:
         :return:
         """
         transform_dispatcher = {"minmax": self.__transform_minmax,
-                                "standard": self.__transform_standard}
+                                "standard": self.__transform_standard,
+                                "scale": self.__transform_scale}
 
         if self.method == "none":
             return input_tensor
-
-        return transform_dispatcher[self.method](input_tensor)
+        elif isinstance(self.method, str):
+            return transform_dispatcher[self.method](input_tensor)
+        else:
+            return transform_dispatcher["scale"](input_tensor, self.method)
 
     def __transform_minmax(self, input_tensor):
         min_tensor = self.min_tensor.repeat(*input_tensor.shape[:-1], 1)
@@ -61,18 +66,24 @@ class Normalizer:
         mean_tensor = self.mean_tensor.repeat(*input_tensor.shape[:-1], 1)
         return torch.div(input_tensor - mean_tensor, std_tensor + self.epsilon)
 
+    def __transform_scale(self, input_tensor, scale_term):
+        return input_tensor / scale_term
+
     def inverse_transform(self, input_tensor):
         """
         :param input_tensor: ....xD
         :return:
         """
         inverse_transform_dispatcher = {"minmax": self.__inverse_transform_minmax,
-                                        "standard": self.__inverse_transform_standard}
+                                        "standard": self.__inverse_transform_standard,
+                                        "scale": self.__inverse_transform_scale}
 
         if self.method == "none":
             return input_tensor
-
-        return inverse_transform_dispatcher[self.method](input_tensor)
+        elif isinstance(self.method, str):
+            return inverse_transform_dispatcher[self.method](input_tensor)
+        else:
+            return inverse_transform_dispatcher["scale"](input_tensor, self.method)
 
     def __inverse_transform_minmax(self, input_tensor):
         min_tensor = self.min_tensor.repeat(*input_tensor.shape[:-1], 1)
@@ -84,4 +95,5 @@ class Normalizer:
         mean_tensor = self.mean_tensor.repeat(*input_tensor.shape[:-1], 1)
         return torch.mul(input_tensor, std_tensor) + mean_tensor
 
-
+    def __inverse_transform_scale(self, input_tensor, scale_term):
+        return input_tensor * scale_term
