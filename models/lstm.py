@@ -41,7 +41,8 @@ class LSTM(nn.Module):
         self.final_act_type = params["final_act_type"]
         self.relu_alpha = params["relu_alpha"]
 
-        self.norm_method = params["norm_method"]
+        self.input_norm_method = params["input_norm_method"]
+        self.output_norm_method = params["output_norm_method"]
 
         self.__create_rnn_cell_list()
         self.__create_dropout_layer()
@@ -51,8 +52,8 @@ class LSTM(nn.Module):
         self.optimizer = self.optimizer_dispatcher[self.optimizer_type](self.parameters(), lr=self.learning_rate,
                                                                         weight_decay=self.l2_reg)
 
-        self.input_normalizer = Normalizer(self.norm_method)
-        self.output_normalizer = Normalizer(self.norm_method)
+        self.input_normalizer = Normalizer(self.input_norm_method)
+        self.output_normalizer = Normalizer(self.output_norm_method)
 
     def __create_rnn_cell_list(self):
         cell_list = []
@@ -75,7 +76,7 @@ class LSTM(nn.Module):
         if self.final_act_type == "leaky_relu":
             self.final_act_layer = self.activation_dispatcher[self.final_act_type](self.relu_alpha)
         else:
-            self.final_act_layer = self.activation_dispatcher[self.final_act_type]
+            self.final_act_layer = self.activation_dispatcher[self.final_act_type]()
 
     def __init_hidden_states(self, batch_size):
         self.h_list = []

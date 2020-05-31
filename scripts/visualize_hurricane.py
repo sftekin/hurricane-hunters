@@ -1,5 +1,5 @@
 import os
-os.environ['PROJ_LIB'] = '/Users/selimfurkantekin/miniconda3/envs/hurricane/share/basemap'
+# os.environ['PROJ_LIB'] = '/Users/selimfurkantekin/miniconda3/envs/hurricane/share/basemap'
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,5 +26,5 @@ for hurr_file in hurr_list:
     m.plot(x, y, linewidth=1.5)
 
 m.bluemarble()
-plt.savefig(save_path, bbox_inches="tight", pad_inches=0, dpi=500)
-
+# plt.savefig(save_path, bbox_inches="tight", pad_inches=0, dpi=500)
+plt.show()
