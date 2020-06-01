@@ -80,7 +80,9 @@ model_params_pool = {
         "return_mode": ['weather'],
         "phase_shift": [1],
         "cut_start": [True],
-        "shuffle": [True]
+        "shuffle": [True],
+        "early_side_info_flag": [True],
+        "early_side_info_dims": [[16, 8]],
     }
 }
 
@@ -103,6 +105,7 @@ class Config:
             "hur_input_dim": list(range(7)),
             "weather_input_dim": list(range(5)),
             "hur_output_dim": list(range(2)),
+            "side_info_dim": list(range(2, 7))
         }
 
         self.data_params = {

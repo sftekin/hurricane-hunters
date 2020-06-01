@@ -129,7 +129,7 @@ class LSTM(nn.Module):
 
         data_list = []
         label_list = []
-        for x, y in batch_generator.generate('train'):
+        for x, y, _ in batch_generator.generate('train'):
             data_list.append(x)
             label_list.append(y)
 
@@ -172,7 +172,7 @@ class LSTM(nn.Module):
         count = 0
         running_loss = 0.0
 
-        for count, (input_data, output_data) in enumerate(batch_generator.generate(dataset_type)):
+        for count, (input_data, output_data, _) in enumerate(batch_generator.generate(dataset_type)):
             input_data = self.input_normalizer.transform(input_data)
             output_data = self.output_normalizer.transform(output_data)
             loss = step_fun(input_data, output_data[:, -1], loss_fun, denormalize)  # many-to-one

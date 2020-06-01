@@ -385,9 +385,28 @@ class TrajGRU(nn.Module):
         self.conv_dims = params['output_conv_dims']
         self.conv_kernels = params['output_conv_kernels']
 
+        # early side_info conf
+        self.early_side_info_flag = params['early_side_info_flag']
+        self.early_side_info_dims = params['early_side_info_dims']
+        layer_list = []
+        for i, nh in enumerate(self.early_side_info_dims):
+            if i == 0:
+                ni = 5
+                no = nh
+            else:
+                ni = no
+                no = nh
+            layer_list.append(nn.Linear(ni, no))
+        self.early_side_info_module = nn.ModuleList(layer_list)
+
+        if self.early_side_info_flag:
+            embedded_early_side_info_dim = self.early_side_info_dims[-1]
+        else:
+            embedded_early_side_info_dim = 0
+
         # define model blocks
         self.encoder = TrajGRU.EncoderBlock(input_size=self.input_size,
-                                            input_dim=self.input_dim,
+                                            input_dim=self.input_dim + embedded_early_side_info_dim,
                                             window_in=self.window_in,
                                             **self.encoder_conf)
 
@@ -415,6 +434,7 @@ class TrajGRU(nn.Module):
 
         self.input_normalizer = Normalizer(self.norm_method)
         self.output_normalizer = Normalizer(self.norm_method)
+        self.side_info_normalizer = Normalizer(self.norm_method)
 
         # set optimizer
         self._set_optimizer()
@@ -432,12 +452,15 @@ class TrajGRU(nn.Module):
 
         data_list = []
         label_list = []
-        for x, y in batch_generator.generate('train'):
+        side_info_list = []
+        for x, y, s in batch_generator.generate('train'):
             data_list.append(x)
             label_list.append(y)
+            side_info_list.append(s)
 
         self.input_normalizer.fit(torch.cat(data_list))
         self.output_normalizer.fit(torch.cat(label_list))
+        self.side_info_normalizer.fit(torch.cat(side_info_list))
 
         for epoch in range(self.num_epochs):
             # train and validation loop
@@ -476,11 +499,13 @@ class TrajGRU(nn.Module):
         running_loss = 0.0
         dataset = batch_generator.dataset_dict[dataset_type]
         total_len = len(dataset)
-        for count, (input_data, output_data) in enumerate(batch_generator.generate(dataset_type)):
+        for count, (input_data, output_data, side_info_data) in enumerate(batch_generator.generate(dataset_type)):
             print("\r{:.2f}%".format(dataset.count * 100 / total_len), flush=True, end='')
             input_data = self.input_normalizer.transform(input_data).to(self.device)
             output_data = self.output_normalizer.transform(output_data).to(self.device)
-            loss = step_fun(input_data, output_data[:, -1], loss_fun, denormalize)  # many-to-one
+            side_info_data = self.side_info_normalizer.transform(side_info_data).to(self.device)
+
+            loss = step_fun(input_data, output_data[:, -1], side_info_data, loss_fun, denormalize)  # many-to-one
             try:
                 running_loss += loss.detach().numpy()
             except:
@@ -490,11 +515,11 @@ class TrajGRU(nn.Module):
 
         return running_loss
 
-    def train_step(self, input_tensor, output_tensor, loss_fun, denormalize):
+    def train_step(self, input_tensor, output_tensor, side_info_tensor, loss_fun, denormalize):
 
         def closure():
             self.optimizer.zero_grad()
-            predictions = self.forward(input_tensor)
+            predictions = self.forward(input_tensor, side_info_tensor)
             loss = loss_fun(predictions, output_tensor)
             loss.backward()
             nn.utils.clip_grad_norm_(self.parameters(), self.clip)
@@ -504,9 +529,9 @@ class TrajGRU(nn.Module):
 
         return loss
 
-    def eval_step(self, input_tensor, output_tensor, loss_fun, denormalize):
+    def eval_step(self, input_tensor, output_tensor, side_info_tensor,loss_fun, denormalize):
 
-        predictions = self.forward(input_tensor)
+        predictions = self.forward(input_tensor, side_info_tensor)
         if denormalize:
             predictions = self.output_normalizer.inverse_transform(predictions)
             output_tensor = self.output_normalizer.inverse_transform(output_tensor)
@@ -538,14 +563,24 @@ class TrajGRU(nn.Module):
 
         return loss
 
-    def forward(self, input_tensor):
+    def forward(self, input_tensor, side_info_tensor=None):
         """
         :param input_tensor: (B, T, M, N, D)
+        :param side_info_tensor: (B, T, D)
         :type input_tensor: tensor
         :return: (B, T', M, N, D')
         """
-        batch_size = input_tensor.shape[0]
+        batch_size, time_step = input_tensor.shape[:2]
         self.hidden_state = self.__init_hidden(batch_size=batch_size)
+
+        if self.early_side_info_flag:
+            embedded_side_info_tensor = side_info_tensor.reshape(-1, side_info_tensor.shape[-1])
+            for layer in self.early_side_info_module:
+                embedded_side_info_tensor = layer(embedded_side_info_tensor)
+            embedded_side_info_tensor = embedded_side_info_tensor.reshape(batch_size, time_step, -1)
+            embedded_side_info_tensor = embedded_side_info_tensor[:, :, None, None, :].\
+                repeat((1, 1, input_tensor.shape[2], input_tensor.shape[3], 1))
+            input_tensor = torch.cat([input_tensor, embedded_side_info_tensor], dim=-1)
 
         # (b, t, m, n, d) -> (b, t, d, m, n)
         input_tensor = input_tensor.permute(0, 1, 4, 2, 3)

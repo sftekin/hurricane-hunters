@@ -23,6 +23,7 @@ class HurrDataset:
         else:
             raise KeyError("return mode: {}".format(self.return_mode))
         self.hur_output_dim = params['hur_output_dim']
+        self.side_info_dim = params['side_info_dim']
 
         self.__count = 0
 
@@ -63,6 +64,7 @@ class HurrDataset:
                 y_buff = self._create_buffer(data=hur_data,
                                              chosen_dims=self.hur_output_dim,
                                              phase_shift=self.phase_shift)
+                s_buff = self._create_buffer(data=hur_data, chosen_dims=self.side_info_dim)
 
             else:
                 # generate batch
@@ -70,6 +72,7 @@ class HurrDataset:
                 y_buff = self._create_buffer(data=hur_data,
                                              chosen_dims=self.hur_output_dim,
                                              phase_shift=self.phase_shift)
+                s_buff = self._create_buffer(data=hur_data, chosen_dims=self.side_info_dim)
 
             if len(y_buff) == 0:
                 # print('Cant produce batch for hurricane {}'.format(hur_name))
@@ -80,8 +83,9 @@ class HurrDataset:
                 # convert to tensor
                 x = torch.tensor(x_buff[i], dtype=torch.float32)
                 y = torch.tensor(y_buff[i], dtype=torch.float32)
+                s = torch.tensor(s_buff[i], dtype=torch.float32)
 
-                yield x, y
+                yield x, y, s
 
     def _create_buffer(self, data, chosen_dims=None, phase_shift=0):
         data = self._configure_data(data=data, phase_shift=phase_shift)
