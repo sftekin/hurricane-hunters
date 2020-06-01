@@ -478,8 +478,8 @@ class TrajGRU(nn.Module):
         total_len = len(dataset)
         for count, (input_data, output_data) in enumerate(batch_generator.generate(dataset_type)):
             print("\r{:.2f}%".format(dataset.count * 100 / total_len), flush=True, end='')
-            input_data = self.input_normalizer.transform(input_data)
-            output_data = self.output_normalizer.transform(output_data)
+            input_data = self.input_normalizer.transform(input_data).to(self.device)
+            output_data = self.output_normalizer.transform(output_data).to(self.device)
             loss = step_fun(input_data, output_data, loss_fun, denormalize)  # many-to-one
             try:
                 running_loss += loss.detach().numpy()
