@@ -11,10 +11,11 @@ class HurrDataset:
         # I've assumed input and output window_len are equal
         self.batch_size = params['batch_size']
         self.window_len = params['window_len']
-        # self.stride = params['stride']
+        self.stride = params['stride']
         self.phase_shift = params['phase_shift']
         self.cut_start = params['cut_start']
         self.return_mode = params['return_mode']
+        self.shuffle = params['shuffle']
         if self.return_mode == 'weather':
             self.weather_input_dim = params['weather_input_dim']
         elif self.return_mode == 'hurricane':
@@ -37,9 +38,15 @@ class HurrDataset:
 
             # check whether we can create enough batches from it
             t_dim = hur_data.shape[0]
-            if t_dim < (self.window_len * self.batch_size):
-                print('Cant produce batch for hurricane {}'.format(hur_name))
-                continue
+
+            if self.stride:
+                if (t_dim - (self.window_len + self.phase_shift)) / self.stride < self.batch_size:
+                    # print('Cant produce batch for hurricane {}'.format(hur_name))
+                    continue
+            else:
+                if t_dim < (self.window_len * self.batch_size):
+                    # print('Cant produce batch for hurricane {}'.format(hur_name))
+                    continue
 
             if self.return_mode == 'weather':
                 # load weather sample and format
@@ -65,7 +72,7 @@ class HurrDataset:
                                              phase_shift=self.phase_shift)
 
             if len(y_buff) == 0:
-                print('Cant produce batch for hurricane {}'.format(hur_name))
+                # print('Cant produce batch for hurricane {}'.format(hur_name))
                 continue
 
             # return batches
@@ -78,14 +85,41 @@ class HurrDataset:
 
     def _create_buffer(self, data, chosen_dims=None, phase_shift=0):
         data = self._configure_data(data=data, phase_shift=phase_shift)
-        total_frame = data.shape[1]
 
         stacked_data = []
-        for i in range(0, total_frame, self.window_len):
-            batch = data[:, i:i+self.window_len]
-            if chosen_dims is not None:
-                batch = batch[..., chosen_dims]
-            stacked_data.append(batch)
+
+        if data is None:
+            return stacked_data
+
+        if self.stride:
+            total_frame = data.shape[0] - self.window_len
+        else:
+            total_frame = data.shape[1]
+
+        if self.stride:
+            if self.shuffle:
+                np.random.seed(1)
+                index_list = np.random.permutation(np.arange(total_frame))
+            else:
+                index_list = np.arange(total_frame)
+            for i in range(total_frame // self.batch_size):
+                if data.ndim == 2:
+                    batch = np.zeros((self.batch_size, self.window_len, data.shape[-1]))
+                else:
+                    batch = np.zeros((self.batch_size, self.window_len, *data.shape[-3:]))
+
+                for j in range(self.batch_size):
+                    index = index_list[i*self.batch_size+j]
+                    batch[j] = data[index: index+self.window_len]
+                if chosen_dims is not None:
+                    batch = batch[..., chosen_dims]
+                stacked_data.append(batch)
+        else:
+            for i in range(0, total_frame, self.window_len):
+                batch = data[:, i:i+self.window_len]
+                if chosen_dims is not None:
+                    batch = batch[..., chosen_dims]
+                stacked_data.append(batch)
 
         return stacked_data
 
@@ -95,16 +129,32 @@ class HurrDataset:
         other_dims = data.shape[1:]
 
         # Keep only enough time steps to make full batches
-        n_batches = t_dim // (self.batch_size * self.window_len)
+        if self.stride:
+            n_batches = (t_dim - (self.window_len + self.phase_shift)) // self.stride // self.batch_size
+        else:
+            n_batches = t_dim // (self.batch_size * self.window_len)
+
+        if n_batches == 0:
+            return None
+
         if self.cut_start:
-            start_time_step = t_dim - (n_batches * self.batch_size * self.window_len)
+            if self.stride:
+                diff = (t_dim - (self.window_len + self.phase_shift)) % (self.stride * self.batch_size * n_batches)
+                start_time_step = diff
+            else:
+                start_time_step = t_dim - (n_batches * self.batch_size * self.window_len)
             data = data[start_time_step:]
         else:
-            end_time_step = n_batches * self.batch_size * self.window_len
+            if self.stride:
+                diff = (t_dim - (self.window_len + self.phase_shift)) % (self.stride * self.batch_size * n_batches)
+                end_time_step = t_dim - diff
+            else:
+                end_time_step = n_batches * self.batch_size * self.window_len
             data = data[:end_time_step]
 
         # Reshape into batch_size rows
-        data = data.reshape((self.batch_size, -1, *other_dims))
+        if not self.stride:
+            data = data.reshape((self.batch_size, -1, *other_dims))
 
         return data
 

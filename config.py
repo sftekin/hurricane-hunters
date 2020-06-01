@@ -4,10 +4,8 @@ from random import shuffle
 
 model_params_pool = {
     "lstm": {
-        "batch_size": [32],
-        "shuffle": [True],
-        "learning_rate": [3e-3],
-        "num_epochs": [1],
+        "learning_rate": [1e-2],
+        "num_epochs": [10],
         "loss_type": ["l2"],
         "optimizer_type": ["adam"],
         "grad_clip": [10],
@@ -16,11 +14,16 @@ model_params_pool = {
         "early_stop_tolerance": [5],
         "final_act_type": ["tanh"],
         "relu_alpha": [1],
-        "window_len_input": [10],
-        "window_len_output": [10],
+        "hidden_dim_list": [[8, 8]],
+        "input_norm_method": ["standard"],
+        "output_norm_method": ["standard"],
+        "batch_size": [16],
         "stride": [1],
-        "hidden_dim_list": [[8, 8], [8, 8, 8], [32, 32]],
-        "norm_method": ["standard"],
+        "window_len": [10],
+        "phase_shift": [1],
+        "return_mode": ["hurricane"],
+        "cut_start": [True],
+        "shuffle": [True]
     },
     "trajgru": {
         "input_size": [(25, 25)],
@@ -31,25 +34,25 @@ model_params_pool = {
         "loss_type": ["MSE"],
         "encoder_conf": [{
             "en_num_layers": 2,
-            "en_conv_dims": [16, 64],
+            "en_conv_dims": [16, 32],
             "en_conv_kernel": 3,
             "en_conv_stride": 1,
             "en_pool_kernel": 3,
             "en_pool_stride": 2,
             "en_pool_padding": 0,
-            "en_gru_dims": [32, 96],
+            "en_gru_dims": [32, 64],
             "en_gru_kernels": [5, 3],
             "en_connection": 5,
             "en_bias": True
         }],
         "decoder_conf": [{
-            "de_input_dim": 96,
+            "de_input_dim": 64,
             "de_num_layers": 2,
-            "de_conv_dims": [64, 16],
+            "de_conv_dims": [32, 16],
             "de_conv_kernel": 3,
             "de_conv_stride": 2,
             "de_conv_padding": 0,
-            "de_gru_dims": [96, 32],
+            "de_gru_dims": [64, 32],
             "de_gru_kernels": [3, 3],
             "de_connection": 5,
             "de_bias": True
@@ -71,12 +74,13 @@ model_params_pool = {
         "final_act_type": ["leaky_relu"],
         "norm_method": ["standard"],
         # batch gen params
-        "batch_size": [1],
-        "shuffle": [True],
+        "batch_size": [8],
+        "stride": [0],
         "window_len": [10],
         "return_mode": ['weather'],
         "phase_shift": [1],
-        "cut_start": [False]
+        "cut_start": [True],
+        "shuffle": [True]
     }
 }
 

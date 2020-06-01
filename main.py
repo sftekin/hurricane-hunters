@@ -34,8 +34,7 @@ def select_best_model(results_dir):
     return best_model, best_conf
 
 
-def main(overwrite_flag):
-    model_name = 'trajgru'
+def main(overwrite_flag, model_name):
     data_folder = 'data'
     hurricane_path = os.path.join(data_folder, 'ibtracs.NA.list.v04r00.csv')
     results_folder = 'results'
@@ -56,6 +55,8 @@ def main(overwrite_flag):
                                          phase_shift=conf["phase_shift"],
                                          return_mode=conf['return_mode'],
                                          cut_start=conf['cut_start'],
+                                         stride=conf['stride'],
+                                         shuffle=conf['shuffle'],
                                          **config_obj.experiment_params)
 
         train(model_name, batch_generator, exp_count, overwrite_flag, **conf)
@@ -64,7 +65,7 @@ def main(overwrite_flag):
 
     batch_generator = BatchGenerator(hurricane_list=hurricane_list,
                                      batch_size=best_conf["batch_size"],
-                                     shuffle=best_conf['shuffle'],
+                                     shuffle=False,
                                      window_len_input=best_conf["window_len_input"],
                                      window_len_output=best_conf["window_len_output"],
                                      stride=best_conf["stride"],
@@ -76,8 +77,9 @@ def main(overwrite_flag):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--overwrite', type=int, default=0)  # overwrite previous results
+    parser.add_argument('--overwrite', type=int, default=0)   # overwrite previous results
+    parser.add_argument('--model', type=str, default="lstm")  # model name 'lstm' or 'trajgru'
 
     args = parser.parse_args()
 
-    main(args.overwrite)
+    main(args.overwrite, args.model)

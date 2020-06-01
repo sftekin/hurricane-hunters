@@ -126,8 +126,15 @@ class LSTM(nn.Module):
         evaluation_val_loss = best_val_loss
         best_dict = self.state_dict()
 
-        self.input_normalizer.fit(batch_generator.dataset_dict["train"].data)
-        self.output_normalizer.fit(batch_generator.dataset_dict["train"].label)
+
+        data_list = []
+        label_list = []
+        for x, y in batch_generator.generate('train'):
+            data_list.append(x)
+            label_list.append(y)
+
+        self.input_normalizer.fit(torch.cat(data_list))
+        self.output_normalizer.fit(torch.cat(label_list))
 
         for epoch in range(self.num_epochs):
             # train and validation loop
