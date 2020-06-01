@@ -64,7 +64,7 @@ class HurrDataset:
                                              chosen_dims=self.hur_output_dim,
                                              phase_shift=self.phase_shift)
 
-            if len(y_buff) == 0:
+            if len(y_buff) == 0 or len(x_buff) == 0:
                 print('Cant produce batch for hurricane {}'.format(hur_name))
                 continue
 

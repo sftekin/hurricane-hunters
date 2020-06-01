@@ -442,6 +442,7 @@ class TrajGRU(nn.Module):
         for epoch in range(self.num_epochs):
             # train and validation loop
             start_time = time.time()
+            self.reset_per_epoch(batch_size=batch_generator.batch_size)
             running_train_loss = self.step_loop(batch_generator, self.train_step, self.loss_fun, 'train', denormalize=False)
             running_val_loss = self.step_loop(batch_generator, self.eval_step, self.loss_fun, 'validation', denormalize=False)
             epoch_time = time.time() - start_time
@@ -481,6 +482,7 @@ class TrajGRU(nn.Module):
             input_data = self.input_normalizer.transform(input_data).to(self.device)
             output_data = self.output_normalizer.transform(output_data).to(self.device)
             loss = step_fun(input_data, output_data, loss_fun, denormalize)  # many-to-one
+            self.hidden_state = self.__repackage_hidden(self.hidden_state)
             try:
                 running_loss += loss.detach().numpy()
             except:
@@ -495,6 +497,9 @@ class TrajGRU(nn.Module):
         def closure():
             self.optimizer.zero_grad()
             predictions = self.forward(input_tensor)
+            one_step_loss = output_tensor[:, -1] - predictions[:, -1]
+            one_step_loss = torch.abs(one_step_loss.sum()).item()
+            print("One step loss: {:.2f}".format(one_step_loss))
             loss = loss_fun(predictions, output_tensor)
             loss.backward()
             nn.utils.clip_grad_norm_(self.parameters(), self.clip)
@@ -545,7 +550,6 @@ class TrajGRU(nn.Module):
         :return: (B, T', M, N, D')
         """
         batch_size = input_tensor.shape[0]
-        self.hidden_state = self.__init_hidden(batch_size=batch_size)
 
         # (b, t, m, n, d) -> (b, t, d, m, n)
         input_tensor = input_tensor.permute(0, 1, 4, 2, 3)
