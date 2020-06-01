@@ -497,9 +497,9 @@ class TrajGRU(nn.Module):
         def closure():
             self.optimizer.zero_grad()
             predictions = self.forward(input_tensor)
-            one_step_loss = output_tensor[:, -1] - predictions[:, -1]
-            one_step_loss = torch.abs(one_step_loss.sum()).item()
-            print("One step loss: {:.2f}".format(one_step_loss))
+            # one_step_loss = output_tensor[:, -1] - predictions[:, -1]
+            # one_step_loss = torch.abs(one_step_loss.sum()).item()
+            # print("One step loss: {:.2f}".format(one_step_loss))
             loss = loss_fun(predictions, output_tensor)
             loss.backward()
             nn.utils.clip_grad_norm_(self.parameters(), self.clip)
