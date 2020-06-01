@@ -32,6 +32,8 @@ def train(model_name, batch_generator, exp_count, overwrite_flag, **params):
 
     try:
         model = model_disp[model_name](input_dim, output_dim, **params)
+        if model_name == "trajgru":
+            model = model.to(model.device)
         train_loss, val_loss, evaluation_val_loss = model.fit(batch_generator)
     except Exception as error:
         os.rmdir(save_dir)
