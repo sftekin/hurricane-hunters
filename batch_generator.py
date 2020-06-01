@@ -61,7 +61,7 @@ if __name__ == '__main__':
         'hur_output_dim': [0, 1],
         'weather_input_dim': list(range(5)),
         'return_mode': 'weather',
-        'phase_shift': 1,
+        'phase_shift': 10,
         'cut_start': False
     }
 

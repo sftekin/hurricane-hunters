@@ -64,15 +64,15 @@ class HurrDataset:
                                              chosen_dims=self.hur_output_dim,
                                              phase_shift=self.phase_shift)
 
-            if len(y_buff) == 0:
+            if len(y_buff) == 0 or len(x_buff) == 0:
                 print('Cant produce batch for hurricane {}'.format(hur_name))
                 continue
 
             # return batches
             for i in range(len(y_buff)):
                 # convert to tensor
-                x = torch.tensor(x_buff[i])
-                y = torch.tensor(y_buff[i])
+                x = torch.tensor(x_buff[i], dtype=torch.float32)
+                y = torch.tensor(y_buff[i], dtype=torch.float32)
 
                 yield x, y
 
