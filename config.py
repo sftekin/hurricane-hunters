@@ -26,7 +26,7 @@ model_params_pool = {
         "input_size": [(25, 25)],
         "en_dec_output_dim": [1],
         "window_in": [8],
-        "window_out": [8],
+        "window_out": [7],
         "encoder_conf": [{
             "en_num_layers": 1,
             "en_conv_dims": [16],
@@ -62,19 +62,19 @@ model_params_pool = {
 
 trainer_params = {
     # finetune params
-    "learning_rate": [1e-3],
+    "learning_rate": [1e-4],
     "num_epochs": [50],
     "loss_type": ["l2"],
     "l2_reg": [1e-3],
     "early_stop_tolerance": [5],
-    "norm_method": ["standard"],
+    "norm_method": ["minmax"],
     "clip": [5],
     # batch gen params
     "batch_size": [1],
     "shuffle": [True],
     "window_len": [8],
     "return_mode": ['weather'],
-    "phase_shift": [1],
+    "phase_shift": [0],
     "cut_start": [False],
 }
 

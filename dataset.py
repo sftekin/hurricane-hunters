@@ -76,10 +76,13 @@ class HurrDataset:
 
             # return batches
             for i in range(len(y_buff)):
+                y = y_buff[i]
+                y = y[:, 1:] - y[:, :-1]
+
                 # convert to tensor
                 x = torch.tensor(x_buff[i], dtype=torch.float32)
-                y = torch.tensor(y_buff[i], dtype=torch.float32)
                 s = torch.tensor(s_buff[i], dtype=torch.float32)
+                y = torch.tensor(y, dtype=torch.float32)
 
                 yield x, y, s
 
@@ -95,6 +98,7 @@ class HurrDataset:
             if chosen_dims is not None:
                 batch = batch[..., chosen_dims]
             stacked_data.append(batch)
+            # (batch[:, 1:] - batch[:, :-1])**2
 
         return stacked_data
 

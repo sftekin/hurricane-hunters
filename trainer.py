@@ -125,10 +125,17 @@ class Trainer:
         for count, (input_data, output_data, side_info_data) in enumerate(batch_generator.generate(dataset_type)):
             print("\r{:.2f}%".format(dataset.count * 100 / len(dataset)), flush=True, end='')
 
-            input_data = self.input_normalizer.transform(input_data).to(self.device)
-            output_data = self.output_normalizer.transform(output_data).to(self.device)
-            # output_data = output_data.to(self.device)
-            side_info_data = self.side_info_normalizer.transform(side_info_data).to(self.device)
+            input_data_shape = input_data.shape
+            input_data = self.input_normalizer.transform(input_data.reshape(-1, *input_data.shape[2:]))
+            input_data = input_data.reshape(input_data_shape).to(self.device)
+
+            output_data_shape = output_data.shape
+            output_data = self.output_normalizer.transform(output_data.reshape(-1, *output_data.shape[2:]))
+            output_data = output_data.reshape(output_data_shape).to(self.device)
+
+            side_info_data_shape = side_info_data.shape
+            side_info_data = self.side_info_normalizer.transform(side_info_data.reshape(-1, *side_info_data.shape[2:]))
+            side_info_data = side_info_data.reshape(side_info_data_shape).to(self.device)
 
             loss = step_fun(model=model,
                             input_tensor=input_data,
