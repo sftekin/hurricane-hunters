@@ -4,7 +4,7 @@ from random import shuffle
 
 model_params_pool = {
     "lstm": {
-        "learning_rate": [1e-2],
+        "learning_rate": [1e-3],
         "num_epochs": [10],
         "loss_type": ["l2"],
         "optimizer_type": ["adam"],
@@ -15,8 +15,8 @@ model_params_pool = {
         "final_act_type": ["tanh"],
         "relu_alpha": [1],
         "hidden_dim_list": [[8, 8]],
-        "input_norm_method": ["standard"],
-        "output_norm_method": ["standard"],
+        "input_norm_method": ["minmax"],
+        "output_norm_method": ["minmax"],
         "batch_size": [16],
         "stride": [1],
         "window_len": [10],
