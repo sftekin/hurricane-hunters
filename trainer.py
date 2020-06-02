@@ -134,7 +134,7 @@ class Trainer:
 
             hidden = self.repackage_hidden(hidden)
 
-            running_loss += loss.detach().numpy()
+            running_loss += loss.item()
 
         running_loss /= (count + 1)
 

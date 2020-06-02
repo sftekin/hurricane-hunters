@@ -77,7 +77,7 @@ class HurrDataset:
 
                 yield x, y
 
-        print('Skipped total {} hurricanes'.format(skip_count))
+        print('Skipped {} hurricanes\n'.format(skip_count))
 
     def _create_buffer(self, data, chosen_dims=None, phase_shift=0):
         data = self._configure_data(data=data, phase_shift=phase_shift)
