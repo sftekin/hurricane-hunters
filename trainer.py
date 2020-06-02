@@ -182,7 +182,7 @@ class Trainer:
         predictions = predictions.detach().numpy()
         labels = labels.detach().numpy()
 
-        loss = haversine_dist(predictions, labels).mean()
+        loss = haversine_dist(predictions[-1], labels[-1]).mean()
 
         return loss
 
