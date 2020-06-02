@@ -198,7 +198,7 @@ class Trainer:
         :return:
         """
         predictions = predictions.detach().numpy()
-        output_tensor = self.convert_distance(predictions, output_tensor, True)
+        output_tensor = self.convert_distance(predictions.to('cpu'), output_tensor, True)
 
         loss = haversine_dist(predictions, output_tensor).mean()
 
