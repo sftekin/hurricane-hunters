@@ -127,6 +127,7 @@ class Trainer:
 
             input_data = self.input_normalizer.transform(input_data).to(self.device)
             # output_data = self.output_normalizer.transform(output_data).to(self.device)
+            output_data = output_data.to(self.device)
             side_info_data = self.side_info_normalizer.transform(side_info_data).to(self.device)
 
             loss = step_fun(model=model,
@@ -164,6 +165,7 @@ class Trainer:
         if denormalize:
             predictions = self.output_normalizer.inverse_transform(predictions.to('cpu'))
             # output_tensor = self.output_normalizer.inverse_transform(output_tensor.to('cpu'))
+            output_tensor = output_tensor.to('cpu')
         loss = loss_fun(predictions, output_tensor)
 
         return loss
