@@ -61,7 +61,7 @@ model_params_pool = {
 trainer_params = {
     # finetune params
     "learning_rate": [1e-4],
-    "num_epochs": [1],
+    "num_epochs": [50],
     "loss_type": ["l2"],
     "l2_reg": [1e-4],
     "early_stop_tolerance": [5],
