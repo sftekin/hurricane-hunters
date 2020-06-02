@@ -49,12 +49,12 @@ class Trainer:
         label_list = []
         side_info_list = []
         for x, y, s in batch_generator.generate('train'):
-            data_list.append(x)
-            label_list.append(y)
-            side_info_list.append(s)
+            data_list.append(x.reshape(-1, *x.shape[2:]))
+            label_list.append(y.reshape(-1, *y.shape[2:]))
+            side_info_list.append(s.reshape(-1, *s.shape[2:]))
 
         self.input_normalizer.fit(torch.cat(data_list))
-        # self.output_normalizer.fit(torch.cat(label_list))
+        self.output_normalizer.fit(torch.cat(label_list))
         self.side_info_normalizer.fit(torch.cat(side_info_list))
 
         optimizer = optim.Adam(model.parameters(),
@@ -126,8 +126,8 @@ class Trainer:
             print("\r{:.2f}%".format(dataset.count * 100 / len(dataset)), flush=True, end='')
 
             input_data = self.input_normalizer.transform(input_data).to(self.device)
-            # output_data = self.output_normalizer.transform(output_data).to(self.device)
-            output_data = output_data.to(self.device)
+            output_data = self.output_normalizer.transform(output_data).to(self.device)
+            # output_data = output_data.to(self.device)
             side_info_data = self.side_info_normalizer.transform(side_info_data).to(self.device)
 
             loss = step_fun(model=model,
@@ -164,8 +164,8 @@ class Trainer:
         predictions = model.forward(input_tensor, hidden, side_info_data)
         if denormalize:
             predictions = self.output_normalizer.inverse_transform(predictions.to('cpu'))
-            # output_tensor = self.output_normalizer.inverse_transform(output_tensor.to('cpu'))
-            output_tensor = output_tensor.to('cpu')
+            output_tensor = self.output_normalizer.inverse_transform(output_tensor.to('cpu'))
+            # output_tensor = output_tensor.to('cpu')
         loss = loss_fun(predictions, output_tensor)
 
         return loss
