@@ -1,6 +1,7 @@
 import time
 from copy import deepcopy
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -72,8 +73,13 @@ class LSTM(nn.Module):
     def __create_dense_layer(self):
         self.dense_layer = nn.Linear(in_features=self.hidden_dim_list[-1], out_features=self.output_dim)
 
+    def __pass(self, x):
+        return x
+
     def __create_final_act_layer(self):
-        if self.final_act_type == "leaky_relu":
+        if self.final_act_type == "none":
+            self.final_act_layer = self.__pass
+        elif self.final_act_type == "leaky_relu":
             self.final_act_layer = self.activation_dispatcher[self.final_act_type](self.relu_alpha)
         else:
             self.final_act_layer = self.activation_dispatcher[self.final_act_type]()
@@ -126,12 +132,11 @@ class LSTM(nn.Module):
         evaluation_val_loss = best_val_loss
         best_dict = self.state_dict()
 
-
         data_list = []
         label_list = []
         for x, y, _ in batch_generator.generate('train'):
-            data_list.append(x)
-            label_list.append(y)
+            data_list.append(x.reshape(-1, *x.shape[2:]))
+            label_list.append(y.reshape(-1, *y.shape[2:]))
 
         self.input_normalizer.fit(torch.cat(data_list))
         self.output_normalizer.fit(torch.cat(label_list))
@@ -143,7 +148,7 @@ class LSTM(nn.Module):
             running_val_loss = self.step_loop(batch_generator, self.eval_step, self.loss_fun, 'validation', denormalize=False)
             epoch_time = time.time() - start_time
 
-            message_str = "Epoch: {}, Train_loss: {:.5f}, Validation_loss: {:.5f}, Took {:.3f} seconds."
+            message_str = "Epoch: {}, Train_loss: {:.8f}, Validation_loss: {:.8f}, Took {:.3f} seconds."
             print(message_str.format(epoch + 1, running_train_loss, running_val_loss, epoch_time))
             # save the losses
             train_loss.append(running_train_loss)
