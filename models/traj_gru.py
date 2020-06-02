@@ -504,10 +504,10 @@ class TrajGRU(nn.Module):
             input_data_shape = input_data.shape
             input_data = self.input_normalizer.transform(input_data.reshape(-1, *input_data.shape[2:])).\
                 to(self.device).reshape(input_data_shape)
-            output_data_shape = input_data.shape
+            output_data_shape = output_data.shape
             output_data = self.output_normalizer.transform(output_data.reshape(-1, *output_data.shape[2:])).\
                 to(self.device).reshape(output_data_shape)
-            side_info_data_shape = input_data.shape
+            side_info_data_shape = side_info_data.shape
             side_info_data = self.side_info_normalizer.transform(side_info_data.reshape(-1, *side_info_data.shape[2:])).\
                 to(self.device).reshape(side_info_data_shape)
 
@@ -539,8 +539,8 @@ class TrajGRU(nn.Module):
 
         predictions = self.forward(input_tensor, side_info_tensor)
         if denormalize:
-            predictions = self.output_normalizer.inverse_transform(predictions)
-            output_tensor = self.output_normalizer.inverse_transform(output_tensor)
+            predictions = self.output_normalizer.inverse_transform(predictions.to('cpu'))
+            output_tensor = self.output_normalizer.inverse_transform(output_tensor.to('cpu'))
         loss = loss_fun(predictions, output_tensor)
 
         return loss
