@@ -28,8 +28,13 @@ class HurrDataset:
         self.__count = 0
 
     def next(self):
-        for idx in range(self.data_len):
-            self.__count = idx
+        if self.shuffle:
+            idx_list = np.random.permutation(self.data_len)
+        else:
+            idx_list = list(range(self.data_len))
+
+        for count, idx in enumerate(idx_list):
+            self.__count = count
             hur_path = self.hurricane_list[idx]
             weather_path = self.weather_list[idx]
 
@@ -101,11 +106,7 @@ class HurrDataset:
             total_frame = data.shape[1]
 
         if self.stride:
-            if self.shuffle:
-                np.random.seed(1)
-                index_list = np.random.permutation(np.arange(total_frame))
-            else:
-                index_list = np.arange(total_frame)
+            index_list = np.arange(total_frame)
             for i in range(total_frame // self.batch_size):
                 if data.ndim == 2:
                     batch = np.zeros((self.batch_size, self.window_len, data.shape[-1]))

@@ -15,7 +15,8 @@ class LSTM(nn.Module):
     optimizer_dispatcher = {"adam": torch.optim.Adam,
                             "sgd": torch.optim.SGD}
 
-    loss_dispatcher = {"l2": nn.MSELoss}
+    loss_dispatcher = {"l2": nn.MSELoss,
+                       "l1": nn.L1Loss}
 
     activation_dispatcher = {"leaky_relu": nn.LeakyReLU,
                              "tanh": nn.Tanh,

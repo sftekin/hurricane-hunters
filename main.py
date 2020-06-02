@@ -64,11 +64,16 @@ def main(overwrite_flag, model_name):
     best_model, best_conf = select_best_model(results_folder)
 
     batch_generator = BatchGenerator(hurricane_list=hurricane_list,
+                                     weather_list=weather_list,
                                      batch_size=best_conf["batch_size"],
                                      shuffle=False,
                                      window_len_input=best_conf["window_len_input"],
                                      window_len_output=best_conf["window_len_output"],
+                                     cut_start=best_conf['cut_start'],
                                      stride=best_conf["stride"],
+                                     window_len=best_conf["window_len"],
+                                     phase_shift=best_conf["phase_shift"],
+                                     return_mode=best_conf['return_mode'],
                                      **config_obj.experiment_params)
 
     print("Testing with best model...")

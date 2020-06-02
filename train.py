@@ -55,7 +55,7 @@ def train(model_name, batch_generator, exp_count, overwrite_flag, **params):
 
 
 def predict(model, batch_generator):
-    test_loss = model.step_loop(batch_generator, model.eval_step, 'test', denormalize=True)
+    test_loss = model.step_loop(batch_generator, model.eval_step, dataset_type='test', denormalize=True)
     print("Test error: {:.5f}".format(test_loss))
 
 
