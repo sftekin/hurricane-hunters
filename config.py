@@ -70,9 +70,9 @@ model_params_pool = {
         "grad_clip": [1],
         "l2_reg": [0],
         "dropout_rate": [0],
-        "early_stop_tolerance": [5],
-        "final_act_type": ["leaky_relu"],
-        "norm_method": ["minmax"],
+        "early_stop_tolerance": [3],
+        "final_act_type": ["none"],
+        "norm_method": ["none"],
         # batch gen params
         "batch_size": [8],
         "stride": [0],

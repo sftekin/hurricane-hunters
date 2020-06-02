@@ -14,6 +14,10 @@ class TrajGRU(nn.Module):
 
     loss_dispatcher = {"l2": nn.MSELoss}
 
+    activation_dispatcher = {"leaky_relu": nn.LeakyReLU,
+                             "tanh": nn.Tanh,
+                             "sigmoid": nn.Sigmoid}
+
     class TrajGRUCell(nn.Module):
         def __init__(self, input_size, input_dim, hidden_dim,
                      kernel_size, bias, connection):
@@ -357,6 +361,7 @@ class TrajGRU(nn.Module):
 
         self.input_dim = input_dim * 3
         self.fc_output_dim = fc_output_dim
+        self.final_act_type = params["final_act_type"]
 
         self.loss_type = params["loss_type"]
         self.learning_rate = params["learning_rate"]
@@ -428,7 +433,7 @@ class TrajGRU(nn.Module):
 
         self.fc = nn.Linear(in_features=self.en_dec_output_dim * self.input_size[0] * self.input_size[1],
                             out_features=self.fc_output_dim)
-        self.final_act = nn.LeakyReLU(self.relu_alpha)
+        self.final_act = self.__create_final_act_layer()
 
         self.hidden_state = None
 
@@ -513,7 +518,7 @@ class TrajGRU(nn.Module):
 
             loss = step_fun(input_data, output_data[:, -1], side_info_data, loss_fun, denormalize)  # many-to-one
             try:
-                running_loss += loss.detach().numpy()
+                running_loss += loss.item()
             except:
                 running_loss += loss
 
@@ -615,7 +620,7 @@ class TrajGRU(nn.Module):
 
         final_output_list = []
         for t in range(self.window_out):
-            fc_out = self.final_act(self.fc(block_output[:, t]))
+            fc_out = self.final_act_layer(self.fc(block_output[:, t]))
             final_output_list.append(fc_out)
 
         final_output = torch.stack(final_output_list, dim=1)
@@ -672,6 +677,17 @@ class TrajGRU(nn.Module):
         return_dict = {key: value for key, value in zip(new_keys, in_dict.values())}
 
         return return_dict
+
+    def __pass(self, x):
+        return x
+
+    def __create_final_act_layer(self):
+        if self.final_act_type == "none":
+            self.final_act_layer = self.__pass
+        elif self.final_act_type == "leaky_relu":
+            self.final_act_layer = self.activation_dispatcher[self.final_act_type](self.relu_alpha)
+        else:
+            self.final_act_layer = self.activation_dispatcher[self.final_act_type]()
 
     def _set_optimizer(self):  # TODO (fi) enable different optimizers !
         """
