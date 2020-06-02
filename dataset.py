@@ -77,7 +77,7 @@ class HurrDataset:
             # return batches
             for i in range(len(y_buff)):
                 y = y_buff[i]
-                y = y[:, 1:] - y[:, :-1]
+                # y = y[:, 1:] - y[:, :-1]
 
                 # convert to tensor
                 x = torch.tensor(x_buff[i], dtype=torch.float32)
