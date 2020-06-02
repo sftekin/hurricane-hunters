@@ -178,8 +178,10 @@ class LSTM(nn.Module):
         running_loss = 0.0
 
         for count, (input_data, output_data, _) in enumerate(batch_generator.generate(dataset_type)):
-            input_data = self.input_normalizer.transform(input_data)
-            output_data = self.output_normalizer.transform(output_data)
+            b, t, d = input_data.shape
+            input_data = self.input_normalizer.transform(input_data.reshape(-1, d)).reshape(b, t, d)
+            b, t, d = output_data.shape
+            output_data = self.output_normalizer.transform(output_data.reshape(-1, d)).reshape(b, t, d)
             loss = step_fun(input_data, output_data[:, -1], loss_fun, denormalize)  # many-to-one
             try:
                 running_loss += loss.detach().numpy()

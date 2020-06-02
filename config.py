@@ -4,8 +4,8 @@ from random import shuffle
 
 model_params_pool = {
     "lstm": {
-        "learning_rate": [2e-3],
-        "num_epochs": [30],
+        "learning_rate": [1e-3],
+        "num_epochs": [20],
         "loss_type": ["l2"],
         "optimizer_type": ["adam"],
         "grad_clip": [10],
@@ -19,7 +19,7 @@ model_params_pool = {
         "output_norm_method": ["minmax"],
         "batch_size": [16],
         "stride": [1],
-        "window_len": [3],
+        "window_len": [1],
         "phase_shift": [1],
         "return_mode": ["hurricane"],
         "cut_start": [True],

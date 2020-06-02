@@ -454,9 +454,9 @@ class TrajGRU(nn.Module):
         label_list = []
         side_info_list = []
         for x, y, s in batch_generator.generate('train'):
-            data_list.append(x)
-            label_list.append(y)
-            side_info_list.append(s)
+            data_list.append(x.reshape(-1, *x.shape[2:]))
+            label_list.append(y.reshape(-1, *y.shape[2:]))
+            side_info_list.append(s.reshape(-1, *s.shape[2:]))
 
         self.input_normalizer.fit(torch.cat(data_list))
         self.output_normalizer.fit(torch.cat(label_list))
@@ -501,9 +501,15 @@ class TrajGRU(nn.Module):
         total_len = len(dataset)
         for count, (input_data, output_data, side_info_data) in enumerate(batch_generator.generate(dataset_type)):
             print("\r{:.2f}%".format(dataset.count * 100 / total_len), flush=True, end='')
-            input_data = self.input_normalizer.transform(input_data).to(self.device)
-            output_data = self.output_normalizer.transform(output_data).to(self.device)
-            side_info_data = self.side_info_normalizer.transform(side_info_data).to(self.device)
+            input_data_shape = input_data.shape
+            input_data = self.input_normalizer.transform(input_data.reshape(-1, *input_data.shape[2:])).\
+                to(self.device).reshape(input_data_shape)
+            output_data_shape = input_data.shape
+            output_data = self.output_normalizer.transform(output_data.reshape(-1, *output_data.shape[2:])).\
+                to(self.device).reshape(output_data_shape)
+            side_info_data_shape = input_data.shape
+            side_info_data = self.side_info_normalizer.transform(side_info_data.reshape(-1, *side_info_data.shape[2:])).\
+                to(self.device).reshape(side_info_data_shape)
 
             loss = step_fun(input_data, output_data[:, -1], side_info_data, loss_fun, denormalize)  # many-to-one
             try:
