@@ -362,9 +362,29 @@ class TrajGRU(nn.Module):
         self.conv_dims = params['output_conv_dims']
         self.conv_kernels = params['output_conv_kernels']
 
+        # early side_info conf
+        self.early_side_info_flag = params['early_side_info_flag']
+        self.early_side_info_dims = params['early_side_info_dims']
+
+        layer_list = []
+        for i, nh in enumerate(self.early_side_info_dims):
+            if i == 0:
+                ni = 5
+                no = nh
+            else:
+                ni = no
+                no = nh
+            layer_list.append(nn.Linear(ni, no))
+        self.early_side_info_module = nn.ModuleList(layer_list)
+
+        if self.early_side_info_flag:
+            embedded_early_side_info_dim = self.early_side_info_dims[-1]
+        else:
+            embedded_early_side_info_dim = 0
+
         # define model blocks
         self.encoder = TrajGRU.EncoderBlock(input_size=self.input_size,
-                                            input_dim=self.input_dim,
+                                            input_dim=self.input_dim + embedded_early_side_info_dim,
                                             window_in=self.window_in,
                                             **self.encoder_conf)
 
@@ -388,13 +408,22 @@ class TrajGRU(nn.Module):
                             out_features=self.fc_output_dim)
         self.final_act = nn.LeakyReLU(self.relu_alpha)
 
-    def forward(self, input_tensor, cur_states):
+    def forward(self, input_tensor, cur_states, side_info_tensor=None):
         """
         :param input_tensor: (B, T, M, N, D)
         :type input_tensor: tensor
         :return: (B, T', M, N, D')
         """
-        batch_size = input_tensor.shape[0]
+        batch_size, time_step = input_tensor.shape[:2]
+
+        if self.early_side_info_flag:
+            embedded_side_info_tensor = side_info_tensor.reshape(-1, side_info_tensor.shape[-1])
+            for layer in self.early_side_info_module:
+                embedded_side_info_tensor = layer(embedded_side_info_tensor)
+            embedded_side_info_tensor = embedded_side_info_tensor.reshape(batch_size, time_step, -1)
+            embedded_side_info_tensor = embedded_side_info_tensor[:, :, None, None, :]. \
+                repeat((1, 1, input_tensor.shape[2], input_tensor.shape[3], 1))
+            input_tensor = torch.cat([input_tensor, embedded_side_info_tensor], dim=-1)
 
         # (b, t, m, n, d) -> (b, t, d, m, n)
         input_tensor = input_tensor.permute(0, 1, 4, 2, 3)

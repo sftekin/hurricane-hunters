@@ -55,6 +55,8 @@ model_params_pool = {
         "output_conv_dims": [[16, 16]],
         "output_conv_kernels": [[5, 1]],
         "relu_alpha": [1],
+        "early_side_info_flag": [True],
+        "early_side_info_dims": [[16, 8]]
     }
 }
 
@@ -96,6 +98,7 @@ class Config:
             "hur_input_dim": list(range(7)),
             "weather_input_dim": list(range(5)),
             "hur_output_dim": list(range(2)),
+            "side_info_dim": list(range(2, 7))
         }
 
         self.data_params = {

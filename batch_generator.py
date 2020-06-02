@@ -57,6 +57,7 @@ if __name__ == '__main__':
         'val_ratio': 0.1,
         'window_len': 10,
         'hur_input_dim': list(range(7)),
+        "side_info_dim": list(range(2, 7)),
         'hur_output_dim': [0, 1],
         'weather_input_dim': list(range(5)),
         'return_mode': 'weather',

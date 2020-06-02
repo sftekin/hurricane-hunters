@@ -25,6 +25,7 @@ class Trainer:
 
         self.input_normalizer = Normalizer(self.norm_method)
         self.output_normalizer = Normalizer(self.norm_method)
+        self.side_info_normalizer = Normalizer(self.norm_method)
 
     def fit(self, model, batch_generator):
         """
@@ -46,12 +47,15 @@ class Trainer:
 
         data_list = []
         label_list = []
-        for x, y in batch_generator.generate('train'):
+        side_info_list = []
+        for x, y, s in batch_generator.generate('train'):
             data_list.append(x)
             label_list.append(y)
+            side_info_list.append(s)
 
         self.input_normalizer.fit(torch.cat(data_list))
         self.output_normalizer.fit(torch.cat(label_list))
+        self.side_info_normalizer.fit(torch.cat(side_info_list))
 
         optimizer = optim.Adam(model.parameters(),
                                lr=self.learning_rate,
@@ -118,15 +122,17 @@ class Trainer:
         running_loss = 0.0
         dataset = batch_generator.dataset_dict[dataset_type]
         hidden = self.reset_per_epoch(model=model, batch_size=batch_generator.batch_size)
-        for count, (input_data, output_data) in enumerate(batch_generator.generate(dataset_type)):
+        for count, (input_data, output_data, side_info_data) in enumerate(batch_generator.generate(dataset_type)):
             print("\r{:.2f}%".format(dataset.count * 100 / len(dataset)), flush=True, end='')
 
             input_data = self.input_normalizer.transform(input_data).to(self.device)
             output_data = self.output_normalizer.transform(output_data).to(self.device)
+            side_info_data = self.side_info_normalizer.transform(side_info_data).to(self.device)
 
             loss = step_fun(model=model,
                             input_tensor=input_data,
                             output_tensor=output_data,
+                            side_info_data=side_info_data,
                             hidden=hidden,
                             loss_fun=loss_fun,
                             optimizer=optimizer,
@@ -140,10 +146,10 @@ class Trainer:
 
         return running_loss
 
-    def train_step(self, model, input_tensor, output_tensor, hidden, loss_fun, optimizer, denormalize):
+    def train_step(self, model, input_tensor, output_tensor, side_info_data, hidden, loss_fun, optimizer, denormalize):
         def closure():
             optimizer.zero_grad()
-            predictions = model.forward(input_tensor, hidden)
+            predictions = model.forward(input_tensor, hidden, side_info_data)
             loss = loss_fun(predictions, output_tensor)
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), self.clip)
@@ -153,8 +159,8 @@ class Trainer:
 
         return loss
 
-    def eval_step(self, model, input_tensor, output_tensor, hidden, loss_fun, optimizer, denormalize):
-        predictions = model.forward(input_tensor, hidden)
+    def eval_step(self, model, input_tensor, output_tensor, side_info_data, hidden, loss_fun, optimizer, denormalize):
+        predictions = model.forward(input_tensor, hidden, side_info_data)
         if denormalize:
             predictions = self.output_normalizer.inverse_transform(predictions.to('cpu'))
             output_tensor = self.output_normalizer.inverse_transform(output_tensor.to('cpu'))
