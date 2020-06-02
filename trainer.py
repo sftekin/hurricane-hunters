@@ -156,8 +156,8 @@ class Trainer:
     def eval_step(self, model, input_tensor, output_tensor, hidden, loss_fun, optimizer, denormalize):
         predictions = model.forward(input_tensor, hidden)
         if denormalize:
-            predictions = self.output_normalizer.inverse_transform(predictions)
-            output_tensor = self.output_normalizer.inverse_transform(output_tensor)
+            predictions = self.output_normalizer.inverse_transform(predictions.to('cpu'))
+            output_tensor = self.output_normalizer.inverse_transform(output_tensor.to('cpu'))
         loss = loss_fun(predictions, output_tensor)
 
         return loss
