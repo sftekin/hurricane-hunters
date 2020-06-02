@@ -71,7 +71,7 @@ class HurrDataset:
                                              chosen_dims=self.side_info_dim)
 
             if len(y_buff) == 0 or len(x_buff) == 0:
-                print('Cant produce batch for hurricane {}'.format(hur_name))
+                skip_count += 1
                 continue
 
             # return batches

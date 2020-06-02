@@ -25,8 +25,8 @@ model_params_pool = {
     "trajgru": {
         "input_size": [(25, 25)],
         "en_dec_output_dim": [1],
-        "window_in": [10],
-        "window_out": [10],
+        "window_in": [8],
+        "window_out": [8],
         "encoder_conf": [{
             "en_num_layers": 1,
             "en_conv_dims": [16],
