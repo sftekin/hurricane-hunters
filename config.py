@@ -27,8 +27,6 @@ model_params_pool = {
         "en_dec_output_dim": [1],
         "window_in": [10],
         "window_out": [10],
-        "regression": ["linear"],
-        "loss_type": ["MSE"],
         "encoder_conf": [{
             "en_num_layers": 1,
             "en_conv_dims": [16],
@@ -57,27 +55,25 @@ model_params_pool = {
         "output_conv_dims": [[16, 16]],
         "output_conv_kernels": [[5, 1]],
         "relu_alpha": [1],
-        "stateful": [False],
-        "clip": [5],
-        # finetune params
-        "learning_rate": [1e-4],
-        "num_epochs": [200],
-        "loss_type": ["l2"],
-        "optimizer_type": ["adam"],
-        "grad_clip": [1],
-        "l2_reg": [1e-4],
-        "dropout_rate": [0.1],
-        "early_stop_tolerance": [5],
-        "final_act_type": ["leaky_relu"],
-        "norm_method": ["standard"],
-        # batch gen params
-        "batch_size": [1],
-        "shuffle": [True],
-        "window_len": [10],
-        "return_mode": ['weather'],
-        "phase_shift": [1],
-        "cut_start": [False]
     }
+}
+
+trainer_params = {
+    # finetune params
+    "learning_rate": [1e-4],
+    "num_epochs": [200],
+    "loss_type": ["l2"],
+    "l2_reg": [1e-4],
+    "early_stop_tolerance": [5],
+    "norm_method": ["standard"],
+    "clip": [5],
+    # batch gen params
+    "batch_size": [1],
+    "shuffle": [True],
+    "window_len": [10],
+    "return_mode": ['weather'],
+    "phase_shift": [1],
+    "cut_start": [False],
 }
 
 
@@ -88,8 +84,9 @@ class Config:
     def __init__(self, model_name):
         self.model_name = model_name
         self.model_params = model_params_pool[self.model_name]
+        self.trainer_params = trainer_params
 
-        self.conf_list = self.create_params_list(dict(**self.model_params))
+        self.conf_list = self.create_params_list(dict(**self.trainer_params, **self.model_params))
         self.num_confs = len(self.conf_list)
 
         self.experiment_params = {

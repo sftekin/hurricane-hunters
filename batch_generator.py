@@ -1,5 +1,4 @@
 from dataset import HurrDataset
-from torch.utils.data import DataLoader
 
 
 class BatchGenerator:

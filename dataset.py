@@ -26,6 +26,7 @@ class HurrDataset:
         self.__count = 0
 
     def next(self):
+        skip_count = 0
         for idx in range(self.data_len):
             self.__count = idx
             hur_path = self.hurricane_list[idx]
@@ -38,7 +39,7 @@ class HurrDataset:
             # check whether we can create enough batches from it
             t_dim = hur_data.shape[0]
             if t_dim < (self.window_len * self.batch_size):
-                print('Cant produce batch for hurricane {}'.format(hur_name))
+                skip_count += 1
                 continue
 
             if self.return_mode == 'weather':
@@ -75,6 +76,8 @@ class HurrDataset:
                 y = torch.tensor(y_buff[i], dtype=torch.float32)
 
                 yield x, y
+
+        print('Skipped total {} hurricanes'.format(skip_count))
 
     def _create_buffer(self, data, chosen_dims=None, phase_shift=0):
         data = self._configure_data(data=data, phase_shift=phase_shift)

@@ -1,8 +1,11 @@
 import os
+import torch
 import pickle as pkl
 import matplotlib.pyplot as plt
 from models.lstm import LSTM
 from models.traj_gru import TrajGRU
+from trainer import Trainer
+
 
 model_disp = {
     'lstm': LSTM,
@@ -11,6 +14,7 @@ model_disp = {
 
 
 def train(model_name, batch_generator, exp_count, overwrite_flag, **params):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if overwrite_flag:
         tag = exp_count
@@ -30,11 +34,13 @@ def train(model_name, batch_generator, exp_count, overwrite_flag, **params):
     input_dim = len(batch_generator.input_dim)
     output_dim = len(batch_generator.output_dim)
 
+    trainer = Trainer(device=device, **params)
+
     try:
-        model = model_disp[model_name](input_dim, output_dim, **params)
-        if model_name == "trajgru":
-            model = model.to(model.device)
-        train_loss, val_loss, evaluation_val_loss = model.fit(batch_generator)
+        model = model_disp[model_name](input_dim, output_dim, device=device, **params)
+        # if model_name == "trajgru":
+        #     model = model.to(model.device)
+        train_loss, val_loss, evaluation_val_loss = trainer.fit(model, batch_generator)
     except Exception as error:
         os.rmdir(save_dir)
         raise error
