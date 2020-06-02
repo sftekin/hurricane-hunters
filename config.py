@@ -62,7 +62,7 @@ model_params_pool = {
 
 trainer_params = {
     # finetune params
-    "learning_rate": [1e-3],
+    "learning_rate": [1e-4],
     "num_epochs": [50],
     "loss_type": ["l2"],
     "l2_reg": [1e-3],
@@ -74,7 +74,7 @@ trainer_params = {
     "shuffle": [True],
     "window_len": [8],
     "return_mode": ['weather'],
-    "phase_shift": [8],
+    "phase_shift": [1],
     "cut_start": [False],
 }
 
