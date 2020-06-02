@@ -58,7 +58,8 @@ class HurrDataset:
                 y_buff = self._create_buffer(data=hur_data,
                                              chosen_dims=self.hur_output_dim,
                                              phase_shift=self.phase_shift)
-                s_buff = self._create_buffer(data=hur_data, chosen_dims=self.side_info_dim)
+                s_buff = self._create_buffer(data=hur_data,
+                                             chosen_dims=self.side_info_dim)
 
             else:
                 # generate batch
@@ -66,7 +67,8 @@ class HurrDataset:
                 y_buff = self._create_buffer(data=hur_data,
                                              chosen_dims=self.hur_output_dim,
                                              phase_shift=self.phase_shift)
-                s_buff = self._create_buffer(data=hur_data, chosen_dims=self.side_info_dim)
+                s_buff = self._create_buffer(data=hur_data,
+                                             chosen_dims=self.side_info_dim)
 
             if len(y_buff) == 0 or len(x_buff) == 0:
                 print('Cant produce batch for hurricane {}'.format(hur_name))
