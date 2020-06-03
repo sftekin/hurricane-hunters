@@ -8,6 +8,8 @@ ENV LANG C.UTF-8
 RUN pip install matplotlib==3.2.1
 RUN pip install pandas==1.0.3
 RUN pip install netCDF4==1.5.3
+RUN pip install seaborn==0.10.1
+RUN pip install scipy==1.4.1
 
 WORKDIR /workspace
 
