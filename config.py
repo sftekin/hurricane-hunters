@@ -77,7 +77,7 @@ model_params_pool = {
         "norm_method": ["none"],
         # batch gen params
         "batch_size": [8],
-        "stride": [0],
+        "stride": [1],
         "window_len": [10],
         "return_mode": ['weather'],
         "phase_shift": [1],
