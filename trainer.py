@@ -25,7 +25,6 @@ class Trainer:
 
         self.input_normalizer = Normalizer(self.norm_method)
         self.output_normalizer = Normalizer(self.norm_method)
-        self.side_info_normalizer = Normalizer(self.norm_method)
 
     def fit(self, model, batch_generator):
         """
@@ -47,15 +46,12 @@ class Trainer:
 
         data_list = []
         label_list = []
-        side_info_list = []
-        for x, y, s in batch_generator.generate('train'):
+        for x, y in batch_generator.generate('train'):
             data_list.append(x.reshape(-1, *x.shape[2:]))
             label_list.append(y.reshape(-1, *y.shape[2:]))
-            side_info_list.append(s.reshape(-1, *s.shape[2:]))
 
         self.input_normalizer.fit(torch.cat(data_list))
         self.output_normalizer.fit(torch.cat(label_list))
-        self.side_info_normalizer.fit(torch.cat(side_info_list))
 
         optimizer = optim.Adam(model.parameters(),
                                lr=self.learning_rate,
@@ -122,28 +118,20 @@ class Trainer:
         running_loss = 0.0
         dataset = batch_generator.dataset_dict[dataset_type]
         hidden = self.reset_per_epoch(model=model, batch_size=batch_generator.batch_size)
-        for count, (input_data, output_data, side_info_data) in enumerate(batch_generator.generate(dataset_type)):
+        for count, (input_data, output_data) in enumerate(batch_generator.generate(dataset_type)):
             print("\r{:.2f}%".format(dataset.count * 100 / len(dataset)), flush=True, end='')
-
-            vec_data = self.convert_distance(output_data)
 
             input_data_shape = input_data.shape
             input_data = self.input_normalizer.transform(input_data.reshape(-1, *input_data.shape[2:]))
             input_data = input_data.reshape(input_data_shape).to(self.device)
 
-            vec_data_shape = vec_data.shape
-            vec_data = self.output_normalizer.transform(vec_data.reshape(-1, *vec_data.shape[2:]))
-            vec_data = vec_data.reshape(vec_data_shape).to(self.device)
-
-            side_info_data_shape = side_info_data.shape
-            side_info_data = self.side_info_normalizer.transform(side_info_data.reshape(-1, *side_info_data.shape[2:]))
-            side_info_data = side_info_data.reshape(side_info_data_shape).to(self.device)
+            output_data_shape = output_data.shape
+            output_data = self.output_normalizer.transform(output_data.reshape(-1, *output_data.shape[2:]))
+            output_data = output_data.reshape(output_data_shape).to(self.device)
 
             loss = step_fun(model=model,
                             input_tensor=input_data,
-                            vec_tensor=vec_data,
                             output_tensor=output_data,
-                            side_info_data=side_info_data,
                             hidden=hidden,
                             loss_fun=loss_fun,
                             optimizer=optimizer,
@@ -157,11 +145,11 @@ class Trainer:
 
         return running_loss
 
-    def train_step(self, model, input_tensor, vec_tensor, output_tensor, side_info_data, hidden, loss_fun, optimizer, denormalize):
+    def train_step(self, model, input_tensor, output_tensor, hidden, loss_fun, optimizer, denormalize):
         def closure():
             optimizer.zero_grad()
-            predictions = model.forward(input_tensor, hidden, side_info_data)
-            loss = loss_fun(predictions, vec_tensor, output_tensor)
+            predictions = model.forward(input_tensor, hidden)
+            loss = loss_fun(predictions, output_tensor)
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), self.clip)
             return loss
@@ -170,17 +158,17 @@ class Trainer:
 
         return loss
 
-    def eval_step(self, model, input_tensor, vec_tensor, output_tensor, side_info_data, hidden, loss_fun, optimizer, denormalize):
-        predictions = model.forward(input_tensor, hidden, side_info_data)
+    def eval_step(self, model, input_tensor, output_tensor, hidden, loss_fun, optimizer, denormalize):
+        predictions = model.forward(input_tensor, hidden)
         if denormalize:
             predictions = self.output_normalizer.inverse_transform(predictions.to('cpu'))
-            vec_tensor = self.output_normalizer.inverse_transform(vec_tensor.to('cpu'))
+            output_tensor = self.output_normalizer.inverse_transform(output_tensor.to('cpu'))
             # output_tensor = output_tensor.to('cpu')
-        loss = loss_fun(predictions, vec_tensor, output_tensor)
+        loss = loss_fun(predictions, output_tensor)
 
         return loss
 
-    def loss_fun(self, predictions, labels, output_tensor):
+    def loss_fun(self, predictions, labels):
         """
         :param predictions: BxD_out
         :param labels: BxD_out
@@ -191,16 +179,16 @@ class Trainer:
 
         return loss
 
-    def loss_fun_evaluation(self, predictions, labels, output_tensor):
+    def loss_fun_evaluation(self, predictions, labels):
         """
         :param labels:
         :param preds:
         :return:
         """
-        predictions = predictions.to('cpu').detach().numpy()
-        output_tensor = self.convert_distance(predictions, output_tensor, True)
+        predictions = predictions.detach().numpy()
+        labels = labels.detach().numpy()
 
-        loss = haversine_dist(predictions, output_tensor).mean()
+        loss = haversine_dist(predictions, labels).mean()
 
         return loss
 
@@ -223,11 +211,3 @@ class Trainer:
             return h.detach()
         else:
             return tuple(self.repackage_hidden(v) for v in h)
-
-    @staticmethod
-    def convert_distance(y, distance_vec=None, convert_back=False):
-        if not convert_back:
-            y = y[:, 1:] - y[:, :-1]
-        else:
-            y = y[:, -1:] + distance_vec
-        return y

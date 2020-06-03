@@ -22,7 +22,8 @@ class HurrDataset:
         else:
             raise KeyError("return mode: {}".format(self.return_mode))
         self.hur_output_dim = params['hur_output_dim']
-        self.side_info_dim = params['side_info_dim']
+        self.vector_mode = params['vector_mode']
+        self.vec_freq = params['vector_freq']
 
         self.__count = 0
 
@@ -36,6 +37,9 @@ class HurrDataset:
             # load hurricane sample
             hur_name = hur_path.split('_')[-1].split('.')[0]
             hur_data = np.load(hur_path, allow_pickle=True)
+
+            if self.vector_mode:
+                hur_data = self._create_vectors(data=hur_data)
 
             # check whether we can create enough batches from it
             t_dim = hur_data.shape[0]
@@ -58,8 +62,6 @@ class HurrDataset:
                 y_buff = self._create_buffer(data=hur_data,
                                              chosen_dims=self.hur_output_dim,
                                              phase_shift=self.phase_shift)
-                s_buff = self._create_buffer(data=hur_data,
-                                             chosen_dims=self.side_info_dim)
 
             else:
                 # generate batch
@@ -67,8 +69,6 @@ class HurrDataset:
                 y_buff = self._create_buffer(data=hur_data,
                                              chosen_dims=self.hur_output_dim,
                                              phase_shift=self.phase_shift)
-                s_buff = self._create_buffer(data=hur_data,
-                                             chosen_dims=self.side_info_dim)
 
             if len(y_buff) == 0 or len(x_buff) == 0:
                 skip_count += 1
@@ -76,17 +76,24 @@ class HurrDataset:
 
             # return batches
             for i in range(len(y_buff)):
-                y = y_buff[i]
-                # y = y[:, 1:] - y[:, :-1]
 
                 # convert to tensor
                 x = torch.tensor(x_buff[i], dtype=torch.float32)
-                s = torch.tensor(s_buff[i], dtype=torch.float32)
-                y = torch.tensor(y, dtype=torch.float32)
+                y = torch.tensor(y_buff[i], dtype=torch.float32)
 
-                yield x, y, s
+                yield x, y
 
         print('Skipped {} hurricanes\n'.format(skip_count))
+
+    def _create_vectors(self, data):
+        y_list = []
+        for i in range(len(data)):
+            if i + self.vec_freq < len(data):
+                delta = data[i + self.vec_freq, :2] - data[i, :2]
+                y_list.append(delta)
+
+        y_arr = np.array(y_list)
+        return y_arr
 
     def _create_buffer(self, data, chosen_dims=None, phase_shift=0):
         data = self._configure_data(data=data, phase_shift=phase_shift)
@@ -98,7 +105,6 @@ class HurrDataset:
             if chosen_dims is not None:
                 batch = batch[..., chosen_dims]
             stacked_data.append(batch)
-            # (batch[:, 1:] - batch[:, :-1])**2
 
         return stacked_data
 

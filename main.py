@@ -56,6 +56,8 @@ def main(overwrite_flag):
                                          phase_shift=conf["phase_shift"],
                                          return_mode=conf['return_mode'],
                                          cut_start=conf['cut_start'],
+                                         vector_mode=conf['vector_mode'],
+                                         vector_freq=conf['vector_freq'],
                                          **config_obj.experiment_params)
 
         train(model_name, batch_generator, exp_count, overwrite_flag, **conf)

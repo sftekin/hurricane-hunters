@@ -26,7 +26,7 @@ model_params_pool = {
         "input_size": [(25, 25)],
         "en_dec_output_dim": [1],
         "window_in": [8],
-        "window_out": [7],
+        "window_out": [8],
         "encoder_conf": [{
             "en_num_layers": 1,
             "en_conv_dims": [16],
@@ -63,7 +63,7 @@ model_params_pool = {
 trainer_params = {
     # finetune params
     "learning_rate": [1e-4],
-    "num_epochs": [50],
+    "num_epochs": [1],
     "loss_type": ["l2"],
     "l2_reg": [1e-3],
     "early_stop_tolerance": [5],
@@ -76,6 +76,8 @@ trainer_params = {
     "return_mode": ['weather'],
     "phase_shift": [0],
     "cut_start": [False],
+    "vector_mode": [True],
+    "vector_freq": [4]
 }
 
 
@@ -97,8 +99,7 @@ class Config:
             "test_ratio": 0.1,
             "hur_input_dim": list(range(7)),
             "weather_input_dim": list(range(5)),
-            "hur_output_dim": list(range(2)),
-            "side_info_dim": list(range(2, 7))
+            "hur_output_dim": list(range(2))
         }
 
         self.data_params = {
