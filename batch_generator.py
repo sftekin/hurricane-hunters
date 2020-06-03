@@ -10,7 +10,7 @@ class BatchGenerator:
         if self.params['return_mode'] == 'hurricane':
             self.input_dim = self.params['hur_input_dim']
         else:
-            self.input_dim = self.params['weather_input_dim']
+            self.input_dim = self.params['weather_input_dim'] * len(self.params['atm_levels'])
         self.output_dim = self.params['hur_output_dim']
         self.batch_size = params['batch_size']
         self.test_ratio = params['test_ratio']

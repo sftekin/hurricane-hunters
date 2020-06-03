@@ -345,7 +345,7 @@ class TrajGRU(nn.Module):
 
     def __init__(self, input_dim, fc_output_dim, **params):
         super(TrajGRU, self).__init__()
-        self.input_dim = input_dim * 3
+        self.input_dim = input_dim
         self.fc_output_dim = fc_output_dim
 
         self.device = params['device']
@@ -361,26 +361,6 @@ class TrajGRU(nn.Module):
         # output conv conf
         self.conv_dims = params['output_conv_dims']
         self.conv_kernels = params['output_conv_kernels']
-
-        # # early side_info conf
-        # self.early_side_info_flag = params['early_side_info_flag']
-        # self.early_side_info_dims = params['early_side_info_dims']
-        #
-        # layer_list = []
-        # for i, nh in enumerate(self.early_side_info_dims):
-        #     if i == 0:
-        #         ni = 5
-        #         no = nh
-        #     else:
-        #         ni = no
-        #         no = nh
-        #     layer_list.append(nn.Linear(ni, no))
-        # self.early_side_info_module = nn.ModuleList(layer_list)
-        #
-        # if self.early_side_info_flag:
-        #     embedded_early_side_info_dim = self.early_side_info_dims[-1]
-        # else:
-        #     embedded_early_side_info_dim = 0
 
         # define model blocks
         self.encoder = TrajGRU.EncoderBlock(input_size=self.input_size,

@@ -24,6 +24,7 @@ class HurrDataset:
         self.hur_output_dim = params['hur_output_dim']
         self.vector_mode = params['vector_mode']
         self.vec_freq = params['vector_freq']
+        self.atm_levels = params['atm_levels']
 
         self.__count = 0
 
@@ -53,6 +54,7 @@ class HurrDataset:
                 weather_data = weather_data[..., self.weather_input_dim]
 
                 # reshape weather sample
+                weather_data = weather_data[:, self.atm_levels]
                 t, l, m, n, d = weather_data.shape
                 weather_data = np.transpose(weather_data, (0, 2, 3, 1, 4))
                 weather_data = weather_data.reshape((t, m, n, d*l))

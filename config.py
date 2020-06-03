@@ -63,7 +63,7 @@ model_params_pool = {
 trainer_params = {
     # finetune params
     "learning_rate": [1e-4],
-    "num_epochs": [50],
+    "num_epochs": [1],
     "loss_type": ["l2"],
     "l2_reg": [1e-3],
     "early_stop_tolerance": [5],
@@ -99,7 +99,8 @@ class Config:
             "test_ratio": 0.1,
             "hur_input_dim": list(range(7)),
             "weather_input_dim": list(range(5)),
-            "hur_output_dim": list(range(2))
+            "hur_output_dim": list(range(2)),
+            "atm_levels": list(range(1))
         }
 
         self.data_params = {
