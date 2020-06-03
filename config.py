@@ -100,7 +100,7 @@ class Config:
             "hur_input_dim": list(range(7)),
             "weather_input_dim": list(range(5)),
             "hur_output_dim": list(range(2)),
-            "atm_levels": list(range(1))
+            "atm_levels": list(range(3))
         }
 
         self.data_params = {

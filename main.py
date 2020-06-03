@@ -21,6 +21,7 @@ def select_best_model(results_dir):
         exp_path = os.path.join(results_dir, exp)
         conf_path = os.path.join(exp_path, 'config.pkl')
         model_path = os.path.join(exp_path, 'model.pkl')
+        trainer_path = os.path.join(exp_path, 'trainer.pkl')
 
         with open(conf_path, 'rb') as f:
             config = pkl.load(f)
@@ -29,9 +30,11 @@ def select_best_model(results_dir):
             best_loss = eval_loss
             with open(model_path, 'rb') as f:
                 best_model = pkl.load(f)
+            with open(trainer_path, 'rb') as f:
+                trainer = pkl.load(f)
             best_conf = config
 
-    return best_model, best_conf
+    return best_model, best_conf, trainer
 
 
 def main(args):
@@ -67,13 +70,13 @@ def main(args):
             train(model_name, batch_generator, exp_count, overwrite_flag, **conf)
 
     elif mode == 'test':
-        best_model, best_conf = select_best_model(results_folder)
+        best_model, best_conf, trainer = select_best_model(results_folder)
 
         batch_generator = BatchGenerator(hurricane_list=hurricane_list,
                                          weather_list=weather_list,
                                          batch_size=best_conf["batch_size"],
                                          window_len=best_conf["window_len"],
-                                         phase_sift=best_conf["phase_shift"],
+                                         phase_shift=best_conf["phase_shift"],
                                          return_mode=best_conf['return_mode'],
                                          cut_start=best_conf['cut_start'],
                                          vector_mode=best_conf['vector_mode'],
@@ -81,7 +84,7 @@ def main(args):
                                          **config_obj.experiment_params)
 
         print("Testing with best model...")
-        predict(best_model, batch_generator)
+        predict(best_model, batch_generator, trainer, **best_conf)
 
     else:
         raise ValueError('input mode: {} is not found'.format(mode))

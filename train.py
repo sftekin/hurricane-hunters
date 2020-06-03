@@ -12,9 +12,10 @@ model_disp = {
     'trajgru': TrajGRU
 }
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 def train(model_name, batch_generator, exp_count, overwrite_flag, **params):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if overwrite_flag:
         tag = exp_count
@@ -38,8 +39,6 @@ def train(model_name, batch_generator, exp_count, overwrite_flag, **params):
 
     try:
         model = model_disp[model_name](input_dim, output_dim, device=device, **params)
-        # if model_name == "trajgru":
-        #     model = model.to(model.device)
         train_loss, val_loss, evaluation_val_loss = trainer.fit(model, batch_generator)
     except Exception as error:
         os.rmdir(save_dir)
@@ -55,13 +54,22 @@ def train(model_name, batch_generator, exp_count, overwrite_flag, **params):
     print('Saving...')
     conf_save_path = os.path.join(save_dir, 'config.pkl')
     model_save_path = os.path.join(save_dir, 'model.pkl')
-    for path, obj in zip([conf_save_path, model_save_path], [save_dict, model]):
+    trainer_save_path = os.path.join(save_dir, 'trainer.pkl')
+    for path, obj in zip([conf_save_path, model_save_path, trainer_save_path],
+                         [save_dict, model, trainer]):
         with open(path, 'wb') as file:
             pkl.dump(obj, file)
 
 
-def predict(model, batch_generator):
-    test_loss = model.step_loop(batch_generator, model.eval_step, 'test', denormalize=True)
+def predict(model, batch_generator, trainer):
+    test_loss = trainer.step_loop(model=model,
+                                  batch_generator=batch_generator,
+                                  step_fun=trainer.eval_step,
+                                  loss_fun=trainer.loss_fun_evaluation,
+                                  dataset_type='test',
+                                  denormalize=True,
+                                  optimizer=None)
+
     print("Test error: {:.5f}".format(test_loss))
 
 
