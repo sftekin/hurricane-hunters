@@ -36,7 +36,7 @@ def select_best_model(results_dir):
 
 def main(args):
     mode = args.mode
-    overwrite_flag = args.overwrite_flag
+    overwrite_flag = args.overwrite
 
     model_name = 'trajgru'
     data_folder = 'data'
