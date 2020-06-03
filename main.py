@@ -84,7 +84,7 @@ def main(args):
                                          **config_obj.experiment_params)
 
         print("Testing with best model...")
-        predict(best_model, batch_generator, trainer, **best_conf)
+        predict(best_model, batch_generator, trainer)
 
     else:
         raise ValueError('input mode: {} is not found'.format(mode))
